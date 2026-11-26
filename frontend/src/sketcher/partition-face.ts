@@ -177,7 +177,8 @@ export function partitionFace(draft: FaceDraft, g: SketchGeometry, equipment: { 
       if (typeof n === "string") continue;
       const of = f.fill === "rod" || f.fill === "drawers" ? f.id : undefined;
       if (f.fill === "rod" || f.fill === "drawers") face.equips.push({ id: f.id, fill: f.fill, path: [...f.niche], niche: rect(n.box) });
-      for (const part of nicheParts(f, n)) {
+      // Its handles drawn on the face, even those only drilled in the 3D (a kitchen unit's caisson).
+      for (const part of nicheParts(f.bareHandles ? { ...f, bareHandles: false } : f, n)) {
         const [[u0, v0], [u1, v1]] = [part.from, part.to];
         const box = rect({ x0: Math.min(u0, u1), y0: Math.min(v0, v1), x1: Math.max(u0, u1), y1: Math.max(v0, v1) });
         if (part.kind === "rod") face.rods.push({ x0: u0 - ox, x1: u1 - ox, y: H - (v0 - oy), ...(of ? { id: of } : {}) });

@@ -9,7 +9,7 @@
 import { openKitchenDossier } from "./kitchen-dossier-view";
 import { SPACE } from "../../features/kitchen-run-items";
 import { withCaissonsPlaced, withRoomsLeft } from "../../document/cabinet-furnish";
-import * as THREE from "three";
+import { frameKitchen } from "./kitchen-room-view";
 import { kitchenPlanIn, kitchenPlanOf, kitchenRunOf, kitchenStarted, runsLost, withKitchenBuilt, withKitchenChanged, withKitchenPlan } from "../../document/kitchen-floor";
 import { pieceItemOf } from "../../document/kitchen-plan-add";
 import { kitchenFromPlan } from "../../document/kitchen-plan-build";
@@ -261,7 +261,10 @@ export class KitchenPlanTool {
   private async create(): Promise<void> {
     const problem = kitchenPlanProblem(this.plan);
     if (problem) return this.editor.notify(problem, "error");
-    await this.editor.change(withKitchenPlan(this.editor.doc, { ...this.plan, runs: {}, made: {} }).doc);
+    // Its room at once (its walls, floor and ceiling), seen from inside.
+    const made = withKitchenPlan(this.editor.doc, { ...this.plan, runs: {}, made: {} }), built = this.plan.noRoom || this.plan.noWalls || this.plan.room ? null : withKitchenBuilt(made.doc, made.id, {});
+    await this.editor.change(built && typeof built !== "string" ? built.doc : made.doc);
+    if (built) this.frame();
     this.editor.notify("Plan de la cuisine posé : cliquez un linéaire pour l'aménager, ou « Proposer une cuisine ».", "success");
     this.draw();
   }
@@ -460,14 +463,8 @@ export function bindKitchenPlan(root: HTMLElement, viewport: Viewport, editor: E
     });
   };
   let tool: KitchenPlanTool | null = null;
-  const frame = () => {
-    const box = new THREE.Box3();
-    for (const id of viewport.displayedBodies) {
-      const m = viewport.bodyMesh(id)?.metrics.bbox;
-      if (m) box.expandByPoint(new THREE.Vector3(...m[0])).expandByPoint(new THREE.Vector3(...m[1]));
-    }
-    if (!box.isEmpty() && !viewport.boxVisible(box, 0.8)) viewport.fitBox(box, 1.2);
-  };
+  // The kitchen in its room, seen from inside it (kitchen-room-view.ts).
+  const frame = () => frameKitchen(viewport, editor.doc);
   const open = (chosen?: string, quiet = false, run?: string) => {
     tool?.close();
     tool = current = new KitchenPlanTool(editor, container, () => (tool = current = null), chosen, quiet, run, frame);

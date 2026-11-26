@@ -13,7 +13,7 @@ import { mad } from "../document/quote";
 import type { NicheFeature, Vec3 } from "../document/types";
 import type { NicheGeometry, NichePart } from "./niche-parts";
 
-type Shape = "tray" | "basket" | "bins" | "bottles" | "drainer" | "carousel" | "halfmoon" | "magic" | "trousers" | "shoes" | "ties" | "mirror" | "pulldown" | "shelf";
+type Shape = "tray" | "basket" | "bins" | "bottles" | "drainer" | "carousel" | "halfmoon" | "magic" | "trousers" | "shoes" | "ties" | "mirror" | "pulldown" | "shelf" | "rails";
 
 export interface AccessoryModel {
   id: string;
@@ -57,6 +57,8 @@ export const ACCESSORIES: AccessoryModel[] = [
   model({ id: "mirror", label: "Miroir pivotant coulissant", room: "dressing", shape: "mirror", width: [120, 3000], depth: 400, height: 1000, euros: 85 }),
   model({ id: "pulldown", label: "Penderie escamotable", room: "dressing", shape: "pulldown", width: [450, 1150], depth: 450, height: 900, hung: true, euros: 90 }),
   model({ id: "shelf", label: "Tablette coulissante", room: "dressing", shape: "shelf", width: [200, 1200], depth: 300, height: 60 }),
+  // In place of the top of a sink's caisson (its top open): two rails of its panels' board, 10 cm wide, made in the workshop.
+  model({ id: "sink-rails", label: "Traverses d'évier (à la place du dessus)", room: "kitchen", shape: "rails", width: [150, 2400], depth: 150, height: 100, hung: true }),
 ];
 
 export const ROOMS: Record<AccessoryModel["room"], string> = { kitchen: "Cuisine", dressing: "Dressing" };
@@ -230,6 +232,14 @@ export function accessoryParts(f: Settings, n: Pick<NicheGeometry, "box" | "dept
       bar("Tige de tirage", [mid, z, w], [mid, y1 - 300, w], 5);
       break;
     }
+    case "rails": {
+      // As a sink unit's (features/cabinet-parts.ts): the front one lying flat, the back one on its edge — where the top
+      // board would be, over the niche (its caisson's top is open: document/cabinet-furnish.ts), level with the sides' top.
+      const t = f.thickness > 0 ? f.thickness : 18;
+      box("Traverse avant", [a, y1, n.depth - h], [b, y1 + t, n.depth], true);
+      box("Traverse arrière", [a, y1 + t - h, 0], [b, y1 + t, t], true);
+      break;
+    }
     case "shelf":
       slides(z);
       box("Tablette coulissante", [a + SLIDE + 1, z + SLIDE_HEIGHT, bw], [b - SLIDE - 1, z + SLIDE_HEIGHT + f.thickness, fw], true);
@@ -243,6 +253,8 @@ export function accessoryHardware(f: Settings, parts: readonly NichePart[]): { n
   const m = accessoryModel(f.accessory?.model);
   if (!m || !parts.length) return [];
   const price = accessoryPrice(m);
+  // Rails are boards of the caisson: nothing to buy.
+  if (m.shape === "rails") return [];
   return m.shape === "shelf" ? [{ name: SHELF_SLIDES, quantity: 1 }] : [{ name: m.label, quantity: 1, ...(price === undefined ? {} : { price }) }];
 }
 

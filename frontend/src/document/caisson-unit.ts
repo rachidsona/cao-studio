@@ -10,14 +10,15 @@ import { kitchenPlanIn, withKitchenBuilt } from "./kitchen-floor";
 import { findFeature, updateFeature } from "./operations";
 import type { OffsetRecord } from "./sketch";
 import type { CadDocument, KitchenRunItem } from "./types";
-import { SPACE_WALL } from "../features/kitchen-run-items";
+import { applianceOf, SPACE_WALL } from "../features/kitchen-run-items";
 
 type Made = { doc: CadDocument; problems: string[] } | string;
 
 /** The model of the unit this caisson was: the one kept when it was furnished, or the one its name says, or a plain one. */
 export function heldModel(doc: CadDocument, item: KitchenRunItem): string {
   // (One of « Mes meubles » is not in the catalogue: its name tells nothing either.)
-  if (item.from && CATALOG.some((e) => e.id.replace(/-\d+$/, "") === item.from)) return item.from;
+  // An appliance's unit too (a sink's, a fridge's surround): what it was, not the caisson it has.
+  if (item.from && (applianceOf({ model: item.from }) || CATALOG.some((e) => e.id.replace(/-\d+$/, "") === item.from))) return item.from;
   const wall = item.model === SPACE_WALL;
   // « Caisson — Haut 1 porte 60 (A3) »: « Haut 1 porte ».
   const name = (findFeature(doc, item.furnished ?? "")?.name ?? "").replace(/^Caisson — /, "").replace(/\s*\([A-Z]+\d+\)$/, "").replace(/\s+\d+$/, "");
@@ -71,6 +72,7 @@ export function withCaissonUnfurnished(doc: CadDocument, sketchId: string): Made
   const freed = withCaissonRemoved(doc, at.sketch.id);
   const plan = kitchenPlanIn(freed, planId);
   if (!plan) return "Ce plan n'existe plus.";
-  const unit: KitchenRunItem = { id, model, width: at.item.width };
+  // A fridge's surround with its own height and its fridge's.
+  const unit: KitchenRunItem = { id, model, width: at.item.width, ...(applianceOf({ model }) && at.item.height ? { height: at.item.height } : {}), ...(at.item.fridge ? { fridge: at.item.fridge } : {}) };
   return withKitchenBuilt(freed, planId, { runs: { ...plan.runs, [run]: (plan.runs?.[run] ?? []).map((i) => (i.id === id ? unit : i)) } });
 }

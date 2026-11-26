@@ -13,6 +13,8 @@ const plan = (list: [string, number, Partial<KitchenRunItem>?][], rest: "start" 
   for (const [model, width, more] of list) items = [...items, { ...newItem(items, model, width), ...more }];
   return { ...KITCHEN_PLAN, model: "I", lengthA: 3600, rest: { A: rest }, runs: { A: items } };
 };
+/** What closes the room round wall A (document/kitchen-plan-shell.ts). */
+const ROOM = ["Mur D", "Mur B", "Mur C", "Sol", "Plafond"];
 /** The pieces of a kind, each from where to where along the wall (x). */
 const spans = (p: KitchenFloorPlan, kind: string) => kitchenFromPlan(p).boxes.filter((b) => b.kind === kind).map((b) => [b.name, Math.round(b.from[0]), Math.round(b.to[0])]);
 
@@ -141,7 +143,7 @@ describe("plan de travail qui suit les meubles", () => {
     const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, worktopEnds: true, runs: {}, made: {} });
     const built = withKitchenBuilt(base.doc, base.id, { runs: { A: [newItem([], "space", 600), newItem([{ id: "k1" } as KitchenRunItem], "space", 2950)] } });
     if (typeof built === "string") throw new Error(built);
-    expect(built.doc.features.filter((f) => f.type === "extrude").map((f) => f.name)).toEqual(["Mur A"]);
+    expect(built.doc.features.filter((f) => f.type === "extrude").map((f) => f.name)).toEqual(["Mur A", ...ROOM]);
   });
 
   it("un meuble d'angle seul sur son linéaire (aucun autre meuble) a son plan de travail, sur lui seulement", () => {
@@ -159,7 +161,7 @@ describe("plan de travail qui suit les meubles", () => {
     // A bare run with no corner unit: still nothing but its wall.
     const bare = withKitchenBuilt(withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: {}, made: {} }).doc, base.id, {});
     if (typeof bare === "string") throw new Error(bare);
-    expect(bare.doc.features.filter((f) => f.type === "extrude").map((f) => f.name)).toEqual(["Mur A"]);
+    expect(bare.doc.features.filter((f) => f.type === "extrude").map((f) => f.name)).toEqual(["Mur A", ...ROOM]);
   });
 
   it("prend l'aspect choisi (un marbre, un Dekton) sur le plan et la crédence, la matière restant celle du devis", () => {

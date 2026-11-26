@@ -266,7 +266,7 @@ export class Viewport {
   setCutaway(ids: ReadonlySet<string>): void { this.layer.setCut(ids); this.markShadows(); }
   isCutaway(bodyId: string): boolean { return this.layer.isCut(bodyId); }
   /** Draws these bodies (the walls of the room) behind what stands in their plane against them. */
-  setBehind(ids: ReadonlySet<string>): void { this.layer.setBehind(ids); this.markShadows(); }
+  setBehind(ids: ReadonlySet<string>, shadowless?: ReadonlySet<string>): void { this.layer.setBehind(ids, shadowless); this.markShadows(); }
   /** Whether a body is drawn: neither hidden nor taken out of the view. */
   bodyInView(bodyId: string): boolean { return this.layer.bodies.get(bodyId)?.mesh.visible === true && !this.layer.isCut(bodyId); }
   setSketchCutaway(ids: ReadonlySet<string>): void { this.sketches.setCut(ids); }

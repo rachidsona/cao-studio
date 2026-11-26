@@ -1,6 +1,6 @@
 /** Les murs qui cachent la vue s'effacent quand on tourne autour de la pièce, et reviennent devant elle. */
 import { expect, test, type Page } from "@playwright/test";
-import { newProject } from "./helpers";
+import { newProject, wallsOnly } from "./helpers";
 
 const click = (page: Page, selector: string) => page.evaluate((s) => document.querySelector<HTMLElement>(s)?.click(), selector);
 const shot = async (page: Page, name: string) => {
@@ -16,6 +16,7 @@ test("le mur entre l'œil et la cuisine s'efface avec ses meubles, la vue tourn�
   await click(page, '[data-workshop="kitchen-plan"]');
   const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
   await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await wallsOnly(tool);
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   for (const run of ["A", "B"]) {
     await tool.locator(`[data-open-run="${run}"]`).click();

@@ -86,6 +86,8 @@ export class BodyLayer {
    * in its very plane, and the two would show in patches, one through the other. Their materials, pushed back.
    */
   private behind = new Set<string>();
+  /** The bodies that cast no shadow: the walls a plan adds round its room and its ceiling would shade all of it. */
+  private shadowless: ReadonlySet<string> = new Set();
   private behindMaterials = new Map<THREE.Material, THREE.Material>();
 
   /** `environment`: what the appearances reflect (a studio), so metals and lacquers look like them. */
@@ -136,7 +138,7 @@ export class BodyLayer {
       const tint = this.tints[index % this.tints.length] as THREE.MeshStandardMaterial;
       const mesh = new THREE.Mesh(geometry, [tint, this.highlightMaterial]);
       mesh.userData.bodyId = data.bodyId;
-      mesh.castShadow = true;
+      mesh.castShadow = !this.shadowless.has(data.bodyId);
       mesh.receiveShadow = true;
 
       const edges = new THREE.LineSegments(new THREE.BufferGeometry(), this.edgeMaterial);
@@ -248,7 +250,9 @@ export class BodyLayer {
   }
 
   /** The walls of the room, drawn behind what stands against them in their plane (app/wall-cutaway.ts). */
-  setBehind(ids: ReadonlySet<string>): void {
+  setBehind(ids: ReadonlySet<string>, shadowless: ReadonlySet<string> = new Set()): void {
+    this.shadowless = shadowless;
+    for (const [id, body] of this.bodies) body.mesh.castShadow = !shadowless.has(id);
     if (ids.size === this.behind.size && [...ids].every((id) => this.behind.has(id))) return;
     this.behind = new Set(ids);
     this.applyAppearance();

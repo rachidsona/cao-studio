@@ -258,6 +258,8 @@ export interface KitchenFloorPlan {
   capOverhang?: number;
   /** The walls it draws behind its runs (no surveyed room) left out: « Murs de la pièce » unticked (document/kitchen-walls.ts). */
   noWalls?: boolean;
+  /** Its walls only, behind its runs: not the rest of its room — the walls round it, its floor, its ceiling (document/kitchen-plan-shell.ts). « Pièce fermée » unticked. */
+  noRoom?: boolean;
   /** By run: its plinth taken away, and how far it is set back from the fronts (mm). The look of the plinths (appearance/library.ts), over the fronts' material's own. */
   noKick?: Record<string, boolean>;
   kickSetback?: Record<string, number>;
@@ -346,6 +348,8 @@ export interface FaceRef {
 
 export interface ExtrudeFeature extends FeatureBase {
   type: "extrude";
+  /** A box cut out of it (its two corners, world): the notch a caisson's side takes for the plinth of its kitchen run — copied in for the kernel only (document/kick-notches.ts). */
+  notch?: [Vec3, Vec3];
   /** Profile source: a sketch… */
   sketch?: string;
   /**
@@ -984,6 +988,10 @@ export interface NicheFeature extends FeatureBase {
   inner?: boolean;
   thickness: number;
   handles: boolean;
+  /** Drawers: each one's share of the height, from the top (as FrontsFeature.drawerShares); missing: equal drawers. */
+  shares?: number[];
+  /** Handles drilled only, none drawn: the caisson a kitchen cabinet became keeps the look of its fronts (document/cabinet-furnish.ts). */
+  bareHandles?: boolean;
   /** Sizes of the chosen hardware, copied in for the kernel only (document/hardware-catalog.ts). */
   hw?: HardwareSizes;
 }

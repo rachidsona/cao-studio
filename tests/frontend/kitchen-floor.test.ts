@@ -138,7 +138,8 @@ describe("la cuisine tirée du plan", () => {
     expect(() => parseDocument(built.doc)).not.toThrow();
     const stored = kitchenPlanIn(built.doc, made.id)!;
     const count = built.doc.features.length;
-    expect(Object.keys(stored.made!)).toEqual(["A", "B"]);
+    // Its runs, and its room closed round them.
+    expect(Object.keys(stored.made!)).toEqual(["A", "B", "room"]);
     expect(built.doc.features.some((f) => f.type === "machining" && (f as MachiningFeature).cutouts?.length)).toBe(true);
     expect(layersOf(built.doc).map((l) => l.name)).toEqual(expect.arrayContaining(["Pièce", "Électroménager"]));
     const cabinet = built.doc.features.find((f) => f.type === "cabinet")!;

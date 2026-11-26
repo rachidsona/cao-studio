@@ -135,10 +135,12 @@ export function withDeletedFreed(prev: CadDocument, next: CadDocument): CadDocum
       // Taken away with other pieces of it (a worktop, a wall): the plan follows, nothing is made again.
       const made = Object.fromEntries(Object.entries(plan.made ?? {}).map(([run, ids]) => [run, ids.filter((id) => findFeature(doc, id))]));
       doc = updateFeature(doc, sketch.id, (f) => (f.type === "sketch" && f.kitchenPlan ? { ...f, kitchenPlan: { ...f.kitchenPlan, runs, ...corners, ...walls, ...(noKick ? { noKick } : {}), made } } : f));
-    } else if (emptied.length) {
-      // Its room, free again (kitchenPlanIn no longer sees it held).
+    } else if (Object.values(sketch.kitchenPlan.runs ?? {}).flat().some((i) => i.furnished && !findFeature(doc, i.furnished) && findFeature(prev, i.furnished))) {
+      // A furnished caisson gone (its panels, or all of it with its sketch): its room, free again (kitchenPlanIn no
+      // longer sees it held), and the kitchen made again without it — no worktop nor plinth left where it stood.
       const free = kitchenPlanIn(doc, sketch.id)?.runs;
-      doc = updateFeature(doc, sketch.id, (f) => (f.type === "sketch" && f.kitchenPlan ? { ...f, kitchenPlan: { ...f.kitchenPlan, ...(free ? { runs: free } : {}) } } : f));
+      const built = only && free ? withKitchenBuilt(doc, sketch.id, { runs: free }) : null;
+      doc = built && typeof built !== "string" ? built.doc : updateFeature(doc, sketch.id, (f) => (f.type === "sketch" && f.kitchenPlan ? { ...f, kitchenPlan: { ...f.kitchenPlan, ...(free ? { runs: free } : {}) } } : f));
     }
   }
   return doc;

@@ -87,5 +87,10 @@ export function wallsCheck(editor: Editor, planId: string | undefined, plan: Kit
     if (typeof made === "string") return editor.notify(made, "error");
     void editor.change(made).then(done);
   });
-  return el("label", { class: "flex min-h-7 items-center gap-2", title: "Décochée : les murs de la pièce sont cachés, sans être supprimés. Cochée : ils reviennent, même supprimés." }, box, "Murs de la pièce");
+  const walls = el("label", { class: "flex min-h-7 items-center gap-2", title: "Décochée : les murs de la pièce sont cachés, sans être supprimés. Cochée : ils reviennent, même supprimés." }, box, "Murs de la pièce");
+  if (roomed) return walls;
+  // Its own room, closed round its walls (document/kitchen-plan-shell.ts): with its walls only.
+  const closed = el("input", { type: "checkbox", class: "size-4 shrink-0 accent-sky-600", checked: plan.noRoom !== true, disabled: plan.noWalls === true, "data-plan-room": "" });
+  closed.addEventListener("change", () => setPlan({ noRoom: !closed.checked }));
+  return el("div", {}, walls, el("label", { class: "flex min-h-7 items-center gap-2", title: "Cochée : la pièce est fermée autour de la cuisine — les murs qui manquent, un sol et un plafond —, et la vue se place à l'intérieur. Décochée : seuls les murs derrière les linéaires." }, closed, "Pièce fermée (sol, plafond, murs d'en face)"));
 }

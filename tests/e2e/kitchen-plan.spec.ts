@@ -1,6 +1,6 @@
 /** Le Plan de cuisine dans un vrai navigateur : le plan vu de dessus, un linéaire aménagé sur sa bande de face, la cuisine proposée, le plan modifié. */
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { newProject, openCard } from "./helpers";
+import { newProject, openCard, wallsOnly } from "./helpers";
 
 /** Where to keep pictures of each step, when asked (SHOTS=<dossier>). */
 const SHOTS = process.env.SHOTS;
@@ -483,6 +483,7 @@ test("plan de cuisine : « Voir » isole un linéaire, de face, avec ses cotes ;
   await click(page, '[data-workshop="kitchen-plan"]');
   const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
   await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await wallsOnly(tool);
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   // Nothing built yet: nothing to see.
   await expect(tool.locator('[data-see-run="A"]')).toBeDisabled();
@@ -684,6 +685,7 @@ test("plan de cuisine : un meuble haut poussé dans la 3D reste où il est, le l
   await click(page, '[data-workshop="kitchen-plan"]');
   const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
   await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await wallsOnly(tool);
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   await tool.locator("[data-propose]").click();
   await expect(page.getByText("Plan de travail A").first()).toBeVisible({ timeout: 60_000 });
@@ -1021,5 +1023,40 @@ test("linéaire : « Place lave-linge » garde 61 cm vides entre deux caissons, 
   await strip.locator("[data-item]").nth(1).click();
   await expect(tool.locator('[data-fold="chosen"]')).toContainText(/Place lave-linge · 61/);
   await shot(page, "24-place-lave-linge");
+  expect(errors).toEqual([]);
+});
+
+test("plan de cuisine : sa pièce fermée d'office (murs, sol, plafond), vue de l'intérieur ; le plafond s'efface vu de dessus", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-plan-cuisine-piece");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  const canvas = page.locator("canvas.cad-view");
+  const names = async () => (await tree(page)).split("\n");
+  // The room at once: the plan's walls A and B, wall B gone on to the far corner, walls C and D, the floor, the ceiling.
+  await expect.poll(async () => [...new Set((await names()).filter((l) => /^(Mur [A-D](, suite)?|Sol|Plafond)$/.test(l)))].sort()).toEqual(["Mur A", "Mur B", "Mur B, suite", "Mur C", "Mur D", "Plafond", "Sol"]);
+  // Seen from inside: the eye lower than the ceiling, which stays; the walls behind the eye are out (C and D), with wall B's end.
+  await expect(canvas).toHaveAttribute("data-flats-cut", "0");
+  await expect.poll(async () => Number(await canvas.getAttribute("data-walls-cut"))).toBeGreaterThanOrEqual(2);
+  await shot(page, "25-piece-vide");
+  // Units put on wall A: the view stays, the whole kitchen in it.
+  await tool.locator('[data-open-run="A"]').click();
+  await unfold(tool, "add");
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  await tool.locator('[data-add="base-bas-3-tiroirs-600"]').click();
+  await tool.getByRole("tab", { name: "Hauts" }).click();
+  await tool.locator('[data-add="wall-haut-1-porte-600"]').click();
+  await expect.poll(async () => (await names()).filter((l) => /^Bas 1 porte 600/.test(l)).length).toBe(1);
+  await expect.poll(async () => (await names()).filter((l) => /^(Sol|Plafond)$/.test(l)).length).toBe(2);
+  await shot(page, "25-piece-meubles");
+  // From above (the top view): the ceiling goes, the floor stays.
+  await page.keyboard.press("Escape");
+  await click(page, '[data-view="top"]');
+  await expect(canvas).toHaveAttribute("data-flats-cut", "1");
+  await shot(page, "25-piece-dessus");
   expect(errors).toEqual([]);
 });

@@ -38,7 +38,7 @@ export function accessoryRows(o: AccessoryRows): (HTMLElement | null)[] {
   const list = el(
     "select",
     { class: FIELD, "aria-label": "Accessoire", "data-accessory-model": "" },
-    ...(Object.keys(ROOMS) as AccessoryModel["room"][]).map((room) => el("optgroup", { label: ROOMS[room] }, ...ACCESSORIES.filter((m) => m.room === room).map((m) => el("option", { value: m.id, selected: m.id === now?.model.id }, m.label)))),
+    ...(Object.keys(ROOMS) as AccessoryModel["room"][]).map((room) => el("optgroup", { label: ROOMS[room] }, ...ACCESSORIES.filter((m) => m.room === room && m.shape !== "rails").map((m) => el("option", { value: m.id, selected: m.id === now?.model.id }, m.label)))),
   );
   // Another model starts on the bottom of the niche.
   list.addEventListener("change", () => set({ model: list.value, lift: 0 }));

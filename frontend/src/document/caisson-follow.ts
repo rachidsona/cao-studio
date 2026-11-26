@@ -92,11 +92,14 @@ export function withCaissonsFollowing(base: CadDocument, plan: KitchenFloorPlan,
     const frame = panelsFrame(placed(plan, u), record.step.depth!);
     const width = record.step.input.length;
     const resized = Math.abs(width - u.width) >= 0.05;
-    if (!resized && sameFrame(frame, sketch.frame)) continue;
+    // Made of a unit of the plan when its sides stopped over the plinth: down to the floor now, as its unit's (notched for the plinth: kick-notches.ts).
+    const dated = !!item?.from && record.step.input.outer === "board" && record.step.input.plinth > 0;
+    if (!resized && !dated && sameFrame(frame, sketch.frame)) continue;
     const before = caissonPose(doc, sketch, width);
     let next: CadDocument;
-    if (resized) {
-      const made = withCaissonResized(doc, sketch, frame, u.width);
+    if (resized || dated) {
+      const source: SketchFeature = dated ? { ...sketch, offsets: sketch.offsets!.map((r) => (r === record ? ({ ...r, step: { ...record.step, input: { ...record.step.input, outer: "side" } } } as OffsetRecord) : r)) } : sketch;
+      const made = withCaissonResized(doc, source, frame, u.width);
       if (typeof made === "string") {
         problems.push(`${sketch.name} : ${made}`);
         continue;

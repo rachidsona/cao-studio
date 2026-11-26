@@ -56,24 +56,28 @@ function withRoomLinked(doc: CadDocument, at: { plan: string; run: string; item:
 }
 
 /**
- * The caisson a kitchen cabinet is: its carcass, its back, its shelves, its doors or its drawers, their materials. On a
- * plinth, its bottom and top run full width and its sides stand between them: nothing goes down in front of the plinth.
+ * The caisson a kitchen cabinet is: its carcass, its back, its shelves, its doors or its drawers, their materials. As
+ * the cabinet's, its sides go down to the floor; they are notched for the plinth of its run (document/kick-notches.ts).
  */
 function cabinetSpec(doc: CadDocument, c: CabinetFeature, fronts: FrontsFeature | undefined): CaissonSpec {
   const back = c.back === "none" ? 0 : c.backThickness;
   const inside: NicheRecipe = { steps: c.shelves > 0 ? [{ at: [], input: { count: c.shelves, thickness: c.thickness, mode: "equal", fixed: 0 } }] : [], equipment: [] };
   if (fronts?.layout === "drawers" && c.shelves === 0) {
-    const { gap, drawers, thickness, handles } = fronts;
-    inside.equipment.push({ at: [], title: "Tiroirs", feature: { type: "niche", fill: "drawers", diameter: 25, drop: 60, drawers, gap, bottomGap: gap, betweenGap: gap, sideGap: gap, thickness, handles } });
+    const { gap, drawers, thickness, handles, drawerShares: shares } = fronts;
+    // As the cabinet's: in front of the carcass, each at its height, their handles drilled only.
+    inside.equipment.push({ at: [], title: "Tiroirs", feature: { type: "niche", fill: "drawers", diameter: 25, drop: 60, drawers, gap, bottomGap: gap, betweenGap: gap, sideGap: gap, thickness, handles, bareHandles: true, mount: "overlay", ...(shares ? { shares } : {}) } });
   }
+  // A sink unit's top: two rails in place of the board (the pipes and the sink come through), its top open.
+  const rails = c.top === "rails" && c.shelves === 0;
+  if (rails) inside.equipment.push({ at: [], title: "Traverses d'évier", feature: { type: "niche", fill: "accessory", accessory: { model: "sink-rails", lift: 0 }, diameter: 25, drop: 60, drawers: 1, gap: 0, thickness: c.thickness, handles: false } });
   const pair = fronts?.layout === "doors";
   const carcass = doc.bodyInfo?.[`${c.id}${PART_SEPARATOR}0`]?.material ?? "melamine-white";
   const facing = fronts ? doc.bodyInfo?.[`${fronts.id}${PART_SEPARATOR}0`]?.material : undefined;
   return {
-    input: { length: c.width, height: c.height, thickness: c.thickness, cases: 2, dividers: ["none"], boards: true, plinth: c.plinth, outer: c.construction === "sides-through" && !c.plinth ? "side" : "board", single: "board", double: "side" },
+    input: { length: c.width, height: c.height, thickness: c.thickness, cases: 2, dividers: ["none"], boards: true, ...(rails ? { openTop: true } : {}), plinth: c.plinth, outer: c.construction === "sides-through" ? "side" : "board", single: "board", double: "side" },
     depth: c.depth - back,
     ...(back > 0 ? { back: { thickness: back, split: "whole" as const } } : {}),
-    ...(fronts && fronts.layout !== "drawers" ? { doors: { gap: fronts.gap, thickness: fronts.thickness, handles: fronts.handles, ...(pair ? {} : { joined: [0], ...(fronts.side === "right" ? { hinges: ["right" as const] } : {}) }) } } : {}),
+    ...(fronts && fronts.layout !== "drawers" ? { doors: { gap: fronts.gap, thickness: fronts.thickness, handles: fronts.handles, bareHandles: true, ...(pair ? {} : { joined: [0], ...(fronts.side === "right" ? { hinges: ["right" as const] } : {}) }) } } : {}),
     cases: [inside],
     carcass,
     ...(facing ? { facing } : {}),
@@ -94,7 +98,7 @@ export function withCabinetFurnished(doc: CadDocument, cabinetId: string, spec?:
   if (!spec && (fronts[0]?.side === "top" || fronts[0]?.side === "bottom")) notes.push("Sa porte relevable devient une porte battante.");
   if (!spec && fronts[0]?.grip === "gorge") notes.push("Ses façades sans poignée reprennent des poignées.");
   if (!spec && (c.dividers ?? 0) > 0) notes.push("Ses cloisons sont à reposer (Cloisons).");
-  if (!spec && c.top === "rails") notes.push("Son dessus est maintenant un panneau plein : pour un évier, découpez-le ou ôtez-le.");
+  if (!spec && c.top === "rails" && c.shelves > 0) notes.push("Son dessus est maintenant un panneau plein : pour un évier, découpez-le ou ôtez-le.");
   const freed = freedFromPlan(doc, c);
   if (typeof freed === "string") return freed;
   // Made again, the kitchen no longer has it (its ids now another's); otherwise it goes with its fronts.

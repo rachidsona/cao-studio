@@ -60,7 +60,8 @@ describe("accessoires intérieurs", () => {
         expect(from[0], `${m.id} ${p.name}`).toBeGreaterThanOrEqual(n.box.x0 - 1e-6);
         expect(to[0], `${m.id} ${p.name}`).toBeLessThanOrEqual(n.box.x1 + 1e-6);
         expect(from[1], `${m.id} ${p.name}`).toBeGreaterThanOrEqual(n.box.y0 - 1e-6);
-        expect(to[1], `${m.id} ${p.name}`).toBeLessThanOrEqual(n.box.y1 + 1e-6);
+        // (A sink's rails stand where the top board would be, over the niche: one board's thickness above it.)
+        expect(to[1], `${m.id} ${p.name}`).toBeLessThanOrEqual(n.box.y1 + (m.shape === "rails" ? 18 : 0) + 1e-6);
         expect(from[2], `${m.id} ${p.name}`).toBeGreaterThanOrEqual(-1e-6);
         expect(to[2], `${m.id} ${p.name}`).toBeLessThanOrEqual(n.depth + 1e-6);
         // No part is flat: the kernel makes a solid of each.

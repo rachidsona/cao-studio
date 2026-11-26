@@ -5,13 +5,17 @@ import { caissonEntry, caissonSpecOf, withCaissonInCase } from "../../frontend/s
 import { withPlan, withZonePartition } from "../../frontend/src/document/plan-layout";
 import { PLAN, planZones } from "../../frontend/src/document/plan-shapes";
 import { cabinetBox } from "../../frontend/src/document/kitchen-catalog";
-import { kitchenPlanIn, kitchenRunOf, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
+import { kitchenPlanIn, kitchenPlanOf, kitchenRunOf, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
+import { withDeletedFreed } from "../../frontend/src/document/kitchen-delete-sync";
 import { pieceItemOf } from "../../frontend/src/document/kitchen-plan-add";
+import { deleteFeatures } from "../../frontend/src/document/operations";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
-import { createReferencePlate, PART_SEPARATOR, type CabinetFeature, type CadDocument, type KitchenRunItem, type NicheFeature, type SketchFeature, type TrimFeature } from "../../frontend/src/document/types";
+import { createReferencePlate, PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontsFeature, type KitchenRunItem, type NicheFeature, type SketchFeature, type TrimFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { FINISH_DEFAULTS } from "../../frontend/src/features/finish-parts";
+import { frontsParts } from "../../frontend/src/features/fronts-parts";
 import { newItem } from "../../frontend/src/features/kitchen-run-items";
+import { nichePartsIn } from "../../frontend/src/features/niche-parts";
 import { frameOf } from "../../frontend/src/sketcher/frame";
 import { isPartition, isShelves } from "../../frontend/src/sketcher/partition-history";
 
@@ -37,7 +41,7 @@ function caissonBox(doc: CadDocument, sketchId: string): [number[], number[]] {
 }
 
 describe("caisson de cuisine aménagé", () => {
-  it("aménagé, il garde ce que son meuble avait : l'évier et sa découpe ; une colonne reste sans plan de travail ; rien devant la plinthe", () => {
+  it("aménagé, il garde ce que son meuble avait : l'évier et sa découpe ; une colonne reste sans plan de travail ; ses côtés vont au sol comme ceux du meuble", () => {
     const made = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "I", lengthA: 2400 });
     const built = withKitchenBuilt(made.doc, made.id, { runs: { A: items(["app-sink", 1200], ["tall-colonne-garde-manger", 600]) } });
     if (typeof built === "string") throw new Error(built);
@@ -55,10 +59,20 @@ describe("caisson de cuisine aménagé", () => {
     const top = doc.features.find((f) => f.type === "extrude" && f.name === "Plan de travail A")!;
     const xs = (doc.features.find((x) => top.type === "extrude" && x.id === top.sketch) as SketchFeature).points.map((q) => q.x);
     expect(Math.max(...xs)).toBeLessThanOrEqual(1200 + 1);
-    // On its plinth: no side of the caisson goes down in front of it.
+    // Its top: two rails as the sink unit's, no board (its top open), and no back — the sink and its pipes come through.
+    const sinkSketch = doc.features.find((f) => f.type === "sketch" && f.name.startsWith("Caisson — Évier")) as SketchFeature;
+    const step = sinkSketch.offsets!.find(isPartition)!.step;
+    expect(step.kind === "partition" && step.input.openTop).toBe(true);
+    expect(step.kind === "partition" && step.back).toBeUndefined();
+    const rails = doc.features.find((f): f is NicheFeature => f.type === "niche" && f.sketch === sinkSketch.id && f.fill === "accessory")!;
+    expect(rails.accessory).toEqual({ model: "sink-rails", lift: 0 });
+    expect(nichePartsIn(doc.features, rails).map((q) => q.name)).toEqual(["Traverse avant", "Traverse arrière"]);
+    expect(doc.features.some((f) => f.type === "extrude" && f.sketch === sinkSketch.id && f.name === "Dessus")).toBe(false);
+    expect(doc.features.some((f) => f.type === "niche" && f.sketch === sinkSketch.id && f.fill === "back")).toBe(false);
+    // As the cabinet it was: its sides down to the floor (notched for the plinth by the kernel: kick-notches.test.ts).
     const sink = doc.features.find((f) => f.type === "sketch" && f.name.startsWith("Caisson — Évier")) as SketchFeature;
     const record = sink.offsets!.find(isPartition)!;
-    expect(record.step.kind === "partition" && record.step.input.outer).toBe("board");
+    expect(record.step.kind === "partition" && record.step.input.outer).toBe("side");
   });
 
   it("devient une Répartition à sa place, avec son fond, ses étagères et ses portes ; son linéaire lui garde sa place", () => {
@@ -114,6 +128,26 @@ describe("caisson de cuisine aménagé", () => {
     if (typeof made === "string") throw new Error(made);
     const equipment = made.doc.features.filter((f): f is NicheFeature => f.type === "niche" && f.sketch === made.sketch);
     expect(equipment.find((f) => f.fill === "drawers")?.drawers).toBe(3);
+    // As the cabinet's fronts: in front of the carcass, their handles drilled only, none drawn — the doors' too.
+    expect(equipment.find((f) => f.fill === "drawers")).toMatchObject({ mount: "overlay", bareHandles: true, handles: true });
+    const fronts = nichePartsIn(made.doc.features, equipment.find((f) => f.fill === "drawers")!);
+    expect(fronts.filter((p) => p.role === "front")).toHaveLength(3);
+    expect(fronts.some((p) => p.kind === "handle")).toBe(false);
+    // Drawers of different heights (two drawers over a pan drawer) keep each its own, to the tenth of a mm.
+    const pans = withKitchenBuilt(doc, kitchenPlanOf(doc)!.id, { runs: { A: items(["base-bas-2-tiroirs-et-casserolier", 900]) } });
+    if (typeof pans === "string") throw new Error(pans);
+    const unit = pans.doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Bas 2 tiroirs"))!;
+    const before = frontsParts(pans.doc.features.find((f): f is FrontsFeature => f.type === "fronts" && f.cabinet === unit.id)!, unit).filter((p) => /^Façade tiroir/.test(p.name)).map((p) => Math.round((p.to[2] - p.from[2]) * 10) / 10);
+    const turned = withCabinetFurnished(pans.doc, unit.id);
+    if (typeof turned === "string") throw new Error(turned);
+    const after = nichePartsIn(turned.doc.features, turned.doc.features.find((f): f is NicheFeature => f.type === "niche" && f.sketch === turned.sketch && f.fill === "drawers")!).filter((p) => p.role === "front").map((p) => Math.round((p.to[1] - p.from[1]) * 10) / 10);
+    expect(new Set(before).size).toBe(2);
+    expect(after).toEqual(before);
+    const doors = withCabinetFurnished(doc, doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Bas 2 portes"))!.id);
+    if (typeof doors === "string") throw new Error(doors);
+    const leaves = doors.doc.features.find((f): f is NicheFeature => f.type === "niche" && f.sketch === doors.sketch && f.fill === "doors")!;
+    expect(leaves.bareHandles).toBe(true);
+    expect(nichePartsIn(doors.doc.features, leaves).some((p) => p.kind === "handle")).toBe(false);
     const wall = made.doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Haut"))!;
     const high = withCabinetFurnished(made.doc, wall.id);
     if (typeof high === "string") throw new Error(high);
@@ -244,6 +278,31 @@ describe("caisson de cuisine aménagé", () => {
     expect(shifted.settings!.front).toEqual({ axis: 1, sign: -1 });
   });
 
+  it("un caisson converti quand ses côtés s'arrêtaient au-dessus de la plinthe les retrouve jusqu'au sol dès que la cuisine est refaite", () => {
+    const { doc, plan } = kitchen();
+    const cabinet = doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Bas 3 tiroirs"))!;
+    const made = withCabinetFurnished(doc, cabinet.id);
+    if (typeof made === "string") throw new Error(made);
+    // As it was made then: its bottom and top across, its sides between them.
+    const dated = { ...made.doc, features: made.doc.features.map((f) => (f.id === made.sketch && f.type === "sketch" ? { ...f, offsets: f.offsets!.map((r) => (isPartition(r) && r.step.kind === "partition" ? { ...r, step: { ...r.step, input: { ...r.step.input, outer: "board" as const } } } : r)) } : f)) } as CadDocument;
+    const outer = (d: CadDocument) => {
+      const record = (d.features.find((f) => f.id === made.sketch) as SketchFeature).offsets!.find(isPartition)!;
+      return record.step.kind === "partition" ? record.step.input.outer : null;
+    };
+    expect(outer(dated)).toBe("board");
+    const built = withKitchenBuilt(dated, plan, {});
+    if (typeof built === "string") throw new Error(built);
+    expect(built.problems).toEqual([]);
+    expect(outer(built.doc)).toBe("side");
+    // Its drawers still in it, and its room still its own.
+    expect(built.doc.features.filter((f): f is NicheFeature => f.type === "niche" && f.sketch === made.sketch && f.fill === "drawers")).toHaveLength(1);
+    expect(kitchenPlanIn(built.doc, plan)!.runs!.A!.find((i) => i.furnished === made.sketch)).toBeTruthy();
+    // Once: built again, nothing more changes.
+    const again = withKitchenBuilt(built.doc, plan, {});
+    if (typeof again === "string") throw new Error(again);
+    expect(JSON.stringify(again.doc.features.find((f) => f.id === made.sketch))).toBe(JSON.stringify(built.doc.features.find((f) => f.id === made.sketch)));
+  });
+
   it("relie un caisson aménagé avant que sa place le retienne, puis le fait suivre", () => {
     const { doc, plan } = kitchen();
     const cabinet = doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Bas 2 portes"))!;
@@ -258,6 +317,33 @@ describe("caisson de cuisine aménagé", () => {
     expect(kitchenPlanIn(moved.doc, plan)!.runs!.A![1]).toMatchObject({ model: "space", furnished: made.sketch, depth: cabinet.depth });
     const [lo1] = caissonBox(moved.doc, made.sketch);
     expect(Math.hypot(...[0, 1, 2].map((i) => lo1[i]! - lo0[i]!))).toBeCloseTo(400, 1);
+  });
+
+  it("le caisson aménagé supprimé dans la 3D (ses panneaux, ou lui tout entier) : plus de plan de travail ni de plinthe à sa place", () => {
+    const made = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "I", lengthA: 2400, rest: { A: "end" } });
+    const built = withKitchenBuilt(made.doc, made.id, { runs: { A: items(["base-bas-2-portes", 800], ["base-bas-3-tiroirs", 600]) } });
+    if (typeof built === "string") throw new Error(built);
+    const cabinet = built.doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Bas 3 tiroirs"))!;
+    const turned = withCabinetFurnished(built.doc, cabinet.id);
+    if (typeof turned === "string") throw new Error(turned);
+    /** The x-span of a board the plan made, by its name. */
+    const span = (doc: CadDocument, name: string) => {
+      const board = doc.features.find((f) => f.type === "extrude" && f.name === name);
+      const xs = board?.type === "extrude" ? (doc.features.find((f) => f.id === board.sketch) as SketchFeature).points.map((q) => Math.round(q.x)) : [];
+      return [Math.min(...xs), Math.max(...xs)];
+    };
+    // Over and under the two units: the cabinet and the furnished caisson.
+    expect(span(turned.doc, "Plan de travail A")).toEqual([0, 1400]);
+    expect(span(turned.doc, "Plinthe A")).toEqual([0, 1400]);
+    const panels = turned.doc.features.filter((f) => (f.type === "extrude" || f.type === "niche") && f.sketch === turned.sketch).map((f) => f.id);
+    for (const ids of [panels, [...panels, turned.sketch]]) {
+      const gone = withDeletedFreed(turned.doc, deleteFeatures(turned.doc, ids).next);
+      expect(gone.features.some((f) => f.id === turned.sketch)).toBe(false);
+      expect(kitchenPlanIn(gone, made.id)!.runs!.A!.map((i) => [i.model, i.width, i.furnished])).toEqual([["base-bas-2-portes", 800, undefined], ["space", 600, undefined]]);
+      // The kitchen made again: its worktop and its plinth stop at the unit left.
+      expect(span(gone, "Plan de travail A")).toEqual([0, 800]);
+      expect(span(gone, "Plinthe A")).toEqual([0, 800]);
+    }
   });
 
   it("le caisson aménagé supprimé, sa place gardée redevient libre : un meuble de sa largeur la prend", () => {

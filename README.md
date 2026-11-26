@@ -2699,9 +2699,25 @@ opération existante.
   chaque meuble posé, proposé ou refait devient aussitôt un caisson du dressing à sa place — étagères, cloisons, niches,
   tiroirs s'y règlent comme au dressing, le plan lui garde sa place, le plan de travail et la plinthe le suivent. Il
   garde tout ce que son meuble avait : évier, plaque, four et leurs découpes, et pour l'habillage de réfrigérateur ses
-  côtés et son réfrigérateur autour de son caisson (`heldUnits`) ; une colonne reste sans plan de travail. Posé sur la
-  plinthe, son dessous et son dessus vont d'un bout à l'autre et ses côtés tiennent entre eux : rien ne descend devant
-  la plinthe. Un meuble d'angle et la casquette restent des caissons simples. La même case est au-dessus des cartes
+  côtés et son réfrigérateur autour de son caisson (`heldUnits`) ; une colonne reste sans plan de travail. **Ses
+  côtés descendent au sol comme ceux du meuble**, entaillés à l'avant sur la hauteur du socle pour laisser passer la
+  plinthe de son linéaire : l'entaille est posée pour le noyau seulement, comme celle des caissons du plan
+  (`caissonKickNotches`, `ExtrudeFeature.notch`, `document/kick-notches.ts`), sur ses panneaux « Côté… » ; sans plinthe
+  sur le linéaire, pas d'entaille. Un caisson converti quand ses côtés s'arrêtaient au-dessus de la plinthe les
+  retrouve jusqu'au sol dès que la cuisine est refaite (`withCaissonsFollowing`). Sur la bande, l'habillage de réfrigérateur aménagé reste dessiné en habillage, la
+  face de son caisson entre ses côtés, au-dessus du réfrigérateur ; « Meuble choisi » le nomme et « Remettre le meuble
+  d'origine » remet l'habillage, pas un bas deux portes (`heldModel` reconnaît les appareils).
+  **Le caisson d'un évier garde ses deux traverses** à la place du dessus — celle de devant à plat, celle de derrière
+  sur chant, 10 cm, au ras du haut des côtés — et n'a ni dessus ni fond : son dessus est ouvert (`openTop`) et les
+  traverses sont un équipement de sa niche (`sink-rails`, `features/accessory-parts.ts`, hors de la liste des
+  accessoires à choisir), refait avec lui à toute largeur. De même un meuble à traverses sans étagère.
+  **Un caisson aménagé supprimé dans la 3D** (ses panneaux, ou lui entier) refait la cuisine : ni plan de travail ni
+  plinthe ne restent à sa place (`withDeletedFreed`).
+  **Ses façades restent celles du meuble** : les façades de tiroirs en applique devant le caisson
+  (`mount: "overlay"`), chacune à sa hauteur (`NicheFeature.shares`, comme `drawerShares` : deux tiroirs et un
+  casserolier restent deux tiroirs et un casserolier), et les poignées percées sans être dessinées en volume, comme
+  sur les façades d'un caisson du plan (`bareHandles`, portes et tiroirs) ; les portes étaient déjà aux mêmes cotes.
+  Un meuble d'angle et la casquette restent des caissons simples. La même case est au-dessus des cartes
   d'« Ajouter des meubles » ; « Vider le linéaire » enlève aussi les caissons de ses places (`withRoomsLeft`) :
   `asCaissons`, `withCaissonsPlaced`) — pose (en applique ou
   encastrées), style (plate, à cadre, rainurée, à lattes, vitrée), poignées (avec, sur profil gorge, sans), couleur de
@@ -2953,6 +2969,21 @@ opération existante.
     - **Murs de la pièce** (case des réglages du Plan de cuisine, `document/kitchen-walls.ts`) : décochée, elle cache
       les murs — ceux de la pièce relevée où le plan est posé, sans les supprimer, ou ceux que le plan dessine derrière
       ses linéaires quand il n'en a pas ; cochée, elle les remet, même s'ils avaient été supprimés.
+    - **La pièce du plan, fermée d'office** (`document/kitchen-plan-shell.ts`) : un plan qui n'est pas posé sur une
+      Pièce relevée a sa pièce entière dès « Créer le plan » — aux murs de ses linéaires s'ajoutent ceux qui manquent
+      pour faire le tour (« Mur B », « Mur C », « Mur D », et « Mur B, suite » quand le mur du plan est plus court que
+      la pièce), un **sol** en chêne et un **plafond**. Elle est large comme le mur A, profonde comme le plus long mur de
+      côté (3 m au moins), jusqu'au mur d'en face d'une cuisine parallèle, 1,20 m de passage derrière un îlot ou une
+      péninsule. Ces pièces sont de la pièce (hors débit et devis, calque « Pièce »), gardées à part des linéaires
+      (`made.room` : « Voir » un linéaire ne les montre pas, un clic dessus n'ouvre aucun linéaire) et refaites avec le
+      plan ; « Murs de la pièce » décochée les enlève avec les murs, et **« Pièce fermée (sol, plafond, murs d'en face) »**
+      décochée, juste dessous (`noRoom`), ne garde que les murs derrière les linéaires, sans la vue de l'intérieur.
+      Elles ne portent pas d'ombre dans la vue.
+      **Vue de l'intérieur** (`app/kitchen/kitchen-room-view.ts`) : à la création du plan, à « Proposer une cuisine »
+      et au premier linéaire aménagé, la vue se tourne vers le coin des linéaires, l'œil un peu au-dessus des yeux et
+      sous le plafond, toute la cuisine dans le cadre ; les murs passés derrière l'œil s'effacent comme d'habitude, et
+      le **plafond s'efface vu de dessus** (le sol vu de dessous : `flatsBehind`, `viewport/wall-cutaway.ts`). Le
+      rendu réaliste laisse de côté ce qui est ainsi effacé de la vue (`render/render-mode.ts`).
     - **Combler le vide en prolongeant un meuble** (`features/kitchen-run-widen.ts`) : sous « Place libre », une ligne
       par rangée qui a un reste (en bas, en haut) : on choisit un meuble — ou un caisson aménagé — et « Prolonger »
       l'élargit de tout ce reste (la place ouverte, celle des fileurs et des fileurs muraux), dans ses limites, ses

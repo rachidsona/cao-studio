@@ -37,7 +37,7 @@ export function heldRows(host: HeldHost): HTMLElement {
   const sketch = item.furnished!;
   const now = caissonSizes(doc, sketch);
   // Its sizes, as a unit of the model it was has them.
-  const unit: KitchenRunItem = { id: item.id, model: heldModel(doc, item), width: item.width };
+  const unit: KitchenRunItem = { id: item.id, model: heldModel(doc, item), width: item.width, ...(item.fridge ? { fridge: item.fridge } : {}) };
   const entry = itemEntry(unit);
   const apply = (made: ReturnType<typeof withCaissonSized>) => {
     if (typeof made === "string") return editor.notify(made, "error");

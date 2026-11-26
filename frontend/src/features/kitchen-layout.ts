@@ -147,6 +147,8 @@ export interface KitchenBox {
   outline?: [number, number][];
   /** A board of the carcass (a corner unit cut at 45°, a rounded end): the carcass's material, not the fronts'. */
   carcass?: boolean;
+  /** A piece of the room with a look of its own (its floor: appearance/library.ts), not the walls' paint. */
+  look?: string;
 }
 
 export interface KitchenLayout {

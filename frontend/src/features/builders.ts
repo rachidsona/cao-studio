@@ -8,7 +8,7 @@ import { buildPaneling } from "./paneling";
 import { buildTrim } from "./trim";
 import { buildRoom } from "./room";
 import { buildAppliance } from "./appliance";
-import { draw, makeCylinder, measureVolume, type Drawing, type Shape3D } from "replicad";
+import { draw, makeBox, makeCylinder, measureVolume, type Drawing, type Shape3D } from "replicad";
 import { solveSketch, SketchError } from "../constraints/solver";
 import type { ExtrudeFeature, Feature, HoleFeature, SketchFeature, Vec3 } from "../document/types";
 import { frameOf } from "../sketcher/frame";
@@ -138,9 +138,21 @@ function buildExtrude(feature: ExtrudeFeature, lookup: OutputLookup): SolidOutpu
     prism = prism.translate([n[0] * feature.startOffset, n[1] * feature.startOffset, n[2] * feature.startOffset]) as Shape3D;
   }
   if (feature.clip) prism = clipped(prism, feature.clip);
+  if (feature.notch) prism = lessBox(prism, feature.notch);
   if (feature.ceiling) prism = underCeiling(prism, feature.ceiling, feature.name);
   if (feature.host) prism = withinWalls(prism, feature.host, frameOf(profile), lookup, feature.lean, shelfParts(profile.geometry, frameOf(profile)));
   return applyOperation(feature.name, prism, feature.operation, feature.target, lookup);
+}
+
+/** This solid less a box (a caisson's side notched for its plinth); takes ownership of `solid`. */
+function lessBox(solid: Shape3D, [from, to]: [Vec3, Vec3]): Shape3D {
+  const tool = makeBox(from, to) as unknown as Shape3D;
+  try {
+    return solid.cut(tool) as Shape3D;
+  } finally {
+    solid.delete();
+    tool.delete();
+  }
 }
 
 /** What of this solid stands over this outline on the floor (a corner cut at an angle); takes ownership of `solid`. */

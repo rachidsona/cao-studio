@@ -53,3 +53,11 @@ export async function openCard(scope: Locator | Page, title: string | RegExp): P
   const card = scope.locator("details[data-panel-card], details[data-section]").filter({ has: page.locator("summary h3").filter({ hasText: title }) }).first();
   if ((await card.getAttribute("open")) === null) await card.locator("summary").first().click();
 }
+
+/**
+ * A kitchen plan with its walls only — not its whole room (floor, ceiling, far walls) nor the view from inside it —, set
+ * before « Créer le plan »: these tests click in the view as it is framed with the walls of the runs alone.
+ */
+export async function wallsOnly(tool: Locator): Promise<void> {
+  await tool.locator("[data-plan-room]").evaluate((box: HTMLInputElement) => box.click());
+}

@@ -137,6 +137,14 @@ export function wallsBehind(walls: ReadonlyMap<string, Slab>, inside: [number, n
 }
 
 /**
+ * The floor and the ceiling in the way (each by its low and high faces, mm): the ceiling — above `mid`, the room's
+ * mid-height — once the eye is higher than its underside, the floor once it is lower than its top.
+ */
+export function flatsBehind(flats: ReadonlyMap<string, [number, number]>, mid: number, eyeZ: number): string[] {
+  return [...flats].filter(([, [lo, hi]]) => ((lo + hi) / 2 > mid ? eyeZ > lo : eyeZ < hi)).map(([id]) => id);
+}
+
+/**
  * The furniture taken out with the walls in the way (`cut`; `of`: each wall's own furniture): all of it, always — a
  * wall gone takes what stands against it, even when nothing else is left to look at (a dressing on one wall, a
  * kitchen seen from behind its corner).

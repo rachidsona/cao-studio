@@ -8,11 +8,11 @@
  * ce qui est choisi (kitchen-strip-actions.ts).
  */
 import { cornerSide, wallCornerSide } from "../../document/kitchen-corners";
-import { kitchenSizes, runAt, zoneSpan, type KitchenRun, type RunGeometry } from "../../document/kitchen-plan-shapes";
+import { FRONT, kitchenSizes, runAt, zoneSpan, type KitchenRun, type RunGeometry } from "../../document/kitchen-plan-shapes";
 import type { HandAppliance } from "../../document/kitchen-hand-appliances";
 import type { KitchenFloorPlan, Vec3 } from "../../document/types";
 import type { KitchenBox } from "../../features/kitchen-layout";
-import { applianceOf, isFiller, itemSize, openRoom, type Placed, type RunFill } from "../../features/kitchen-run-items";
+import { applianceOf, heldUnits, isFiller, itemSize, openRoom, SURROUND, surroundFridge, type Placed, type RunFill } from "../../features/kitchen-run-items";
 import { BRASS, elevationBody } from "./unit-elevation";
 import { escapeHtml } from "../workshop/workshop-ui";
 import { doorsHidden } from "./strip-doors";
@@ -209,11 +209,16 @@ export function runStrip(host: StripHost): SVGSVGElement {
   for (const pl of fill.spaces.filter((q) => q.item.furnished)) {
     const [z0, z1] = pl.row === "wall" ? [s.wallBottom, s.wallTop] : [s.plinth, s.base];
     const [a, b] = [pl.at, pl.at + pl.item.width];
+    // A fridge's surround furnished: itself drawn (its sides, the fridge's room), its caisson's face between its sides, up over the fridge.
+    const held = heldUnits({ spaces: [pl] })[0];
+    const surround = held && applianceOf(held.item)?.role === "fridge-surround" ? drawing(held, p) : null;
+    const [fa, fb] = surround ? [a + FRONT, b - FRONT] : [a, b];
+    const under = surround ? `<g transform="translate(${a} ${y(surround.z + surround.height)})" pointer-events="none">${surround.body}</g>` : "";
     const on = host.other?.kind === "caisson" && host.other.id === pl.item.id;
     // As the 3D has it, when its face can be drawn: its panels, doors, drawers (app/kitchen/held-face.ts).
     const face = host.held?.(pl.item.furnished!, bare) ?? null;
-    const zb = itemSize(p, pl.item, pl.entry).z;
-    parts.push(`<g data-held="${escapeHtml(pl.item.id)}"${host.pickOther ? ' class="cursor-grab"' : ""}><title>Caisson aménagé à la main : cliquer pour le choisir (le modifier dans la 3D, le supprimer), le tirer pour le déplacer</title>${face ? `<g transform="translate(${a} ${y(zb + face.height)}) scale(${(b - a) / face.length} 1)" pointer-events="none">${face.svg}</g>${rect(a, y(zb + face.height), b - a, face.height, "fill-transparent stroke-none", on ? `stroke="${BRASS}" stroke-width="3"` : "")}` : rect(a, y(z1), b - a, z1 - z0, PANEL, on ? `stroke="${BRASS}" stroke-width="3"` : "")}${face ? "" : `<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2)}" text-anchor="middle" font-size="80" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">Caisson aménagé</text>`}<text x="${(a + b) / 2}" y="${pl.row === "wall" ? y(face ? zb + face.height : z1) - 30 : y(face ? zb : z0) + 120}" text-anchor="middle" font-size="90" ${host.edit ? `class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-item="${escapeHtml(pl.item.id)}"><title>Cliquer pour changer la largeur : le caisson s'y refait, son intérieur adapté</title>` : 'class="fill-gray-600 dark:fill-gray-300" pointer-events="none">'}${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text></g>`);
+    const zb = surround ? surroundFridge(p, held!.item) + SURROUND.air : itemSize(p, pl.item, pl.entry).z;
+    parts.push(`<g data-held="${escapeHtml(pl.item.id)}"${host.pickOther ? ' class="cursor-grab"' : ""}><title>Caisson aménagé à la main : cliquer pour le choisir (le modifier dans la 3D, le supprimer), le tirer pour le déplacer</title>${under}${face ? `<g transform="translate(${fa} ${y(zb + face.height)}) scale(${(fb - fa) / face.length} 1)" pointer-events="none">${face.svg}</g>${rect(a, y(zb + face.height), b - a, surround ? zb + face.height : face.height, "fill-transparent stroke-none", on ? `stroke="${BRASS}" stroke-width="3"` : "")}` : rect(a, y(z1), b - a, z1 - z0, PANEL, on ? `stroke="${BRASS}" stroke-width="3"` : "")}${face ? "" : `<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2)}" text-anchor="middle" font-size="80" class="fill-gray-600 dark:fill-gray-300" pointer-events="none">Caisson aménagé</text>`}<text x="${(a + b) / 2}" y="${pl.row === "wall" ? y(face ? zb + face.height : z1) - 30 : y(face && !surround ? zb : z0) + 120}" text-anchor="middle" font-size="90" ${host.edit ? `class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-item="${escapeHtml(pl.item.id)}"><title>Cliquer pour changer la largeur : le caisson s'y refait, son intérieur adapté</title>` : 'class="fill-gray-600 dark:fill-gray-300" pointer-events="none">'}${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text></g>`);
   }
   parts.push(`<line x1="-40" y1="${H}" x2="${L + 40}" y2="${H}" class="stroke-gray-500" vector-effect="non-scaling-stroke"/>`);
   node.innerHTML = parts.join("");

@@ -11,6 +11,7 @@ import { decorateKitchen, layoutPlan } from "./kitchen-plan";
 import { kitchenFromPlan, type KitchenRoomInfo } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
 import { FRONT, KITCHEN_PLAN, kitchenLines, kitchenRuns } from "./kitchen-plan-shapes";
+import { ROOM_MADE, roomShell } from "./kitchen-plan-shell";
 import { deleteFeatures, findFeature, latestBody, uniqueId, updateFeature } from "./operations";
 import { linesGeometry } from "./plan-layout";
 import type { Point } from "./plan-shapes";
@@ -146,6 +147,12 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
     made[run.id] = built.features.map((f) => f.id);
     problems.push(...(empty ? [] : layout.fills[run.id]?.problems ?? []).map((m) => `${run.label} : ${m}`), ...built.problems);
   }
+  // No surveyed room: the plan's own, closed round its walls (the walls missing, a floor, a ceiling).
+  if (!room && !plan.noWalls && !plan.noRoom) {
+    const built = layoutPlan(doc, { ...layout, units: [], boxes: roomShell(plan) }, FRONT, FRONT_MATERIAL, WORKTOP_MATERIAL, plan.place);
+    doc = decorateKitchen({ ...doc, features: [...doc.features, ...built.features] }, built);
+    made[ROOM_MADE] = built.features.map((f) => f.id);
+  }
   doc = withWorkBack(doc, base, work, Object.values(made).flat());
   // The caissons furnished by hand go where their room now is.
   const followed = withCaissonsFollowing(doc, plan, layout.kept);
@@ -243,7 +250,8 @@ export function withKitchenChanged(doc: CadDocument, planId: string, next: Kitch
 export function kitchenRunOf(doc: CadDocument, featureId: string): { plan: string; run: string } | null {
   for (const f of doc.features) {
     if (f.type !== "sketch" || !f.kitchenPlan?.made) continue;
-    for (const [run, ids] of Object.entries(f.kitchenPlan.made)) if (ids.includes(featureId)) return { plan: f.id, run };
+    // Not the pieces of its room (its walls added, floor, ceiling): they are of no run.
+    for (const [run, ids] of Object.entries(f.kitchenPlan.made)) if (run !== ROOM_MADE && ids.includes(featureId)) return { plan: f.id, run };
   }
   return null;
 }

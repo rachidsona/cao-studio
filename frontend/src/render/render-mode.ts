@@ -166,9 +166,13 @@ export class RenderMode {
     }
   }
 
+  /** The bodies in the picture: not the walls, the ceiling nor the furniture taken out of the view because they hide the room (app/wall-cutaway.ts). */
+  private bodies(): THREE.Mesh[] {
+    return this.viewport.bodyMeshes().filter((m) => !this.viewport.isCutaway(m.userData.bodyId as string));
+  }
+
   private bodiesSignature(): string {
-    return this.viewport
-      .bodyMeshes()
+    return this.bodies()
       .map((m) => `${m.geometry.uuid}:${m.matrixWorld.elements.map((e) => e.toFixed(2)).join(",")}`)
       .join("|");
   }
@@ -176,7 +180,7 @@ export class RenderMode {
   private rebuild(): void {
     const { tracer, world } = this;
     if (!tracer || !world) return;
-    world.setBodies(this.viewport.bodyMeshes(), this.look, this.settings, this.faces);
+    world.setBodies(this.bodies(), this.look, this.settings, this.faces);
     this.applyEnvironment();
     tracer.bounces = this.settings.bounces;
     this.applyCamera(false);

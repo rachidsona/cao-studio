@@ -208,6 +208,8 @@ export interface DoorSettings {
   gap: number;
   thickness: number;
   handles: boolean;
+  /** Their handles drilled only, none drawn (NicheFeature.bareHandles). */
+  bareHandles?: boolean;
   /** The side each door opens from (its hinges), from the left; missing: left, right, left… in turn. */
   hinges?: ("left" | "right")[];
   /** The cases sharing one door with the next one (the index of the first of each pair). */

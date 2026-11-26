@@ -10,12 +10,13 @@
  */
 import { bodyFamily } from "../document/display-families";
 import { featureBacks, type Facing } from "../document/furniture-facing";
+import { ROOM_MADE } from "../document/kitchen-plan-shell";
 import { bodyInfo } from "../document/materials";
 import { bodyOrigin, findFeature } from "../document/operations";
 import { featureOfBody, type Vec3 } from "../document/types";
 import type { BodyMesh } from "../geometry/protocol";
 import type { Viewport } from "../viewport/viewport";
-import { furnitureOut, pieceOf, piecesInTheWay, piecesOut, slabOf, wallOf, wallsBehind, type Slab } from "../viewport/wall-cutaway";
+import { flatsBehind, furnitureOut, pieceOf, piecesInTheWay, piecesOut, slabOf, wallOf, wallsBehind, type Slab } from "../viewport/wall-cutaway";
 import type { Editor } from "./editor";
 import { isolating } from "./zone-view";
 
@@ -54,12 +55,20 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
   let dressing = new Map<string, { box: [Vec3, Vec3]; back: [number, number] }>();
   let dressingBodies = new Map<string, string[]>();
   let inside: [number, number] = [0, 0];
+  /** The floor and the ceiling of a plan's room (their low and high faces), and the room's mid-height. */
+  let flats = new Map<string, [number, number]>();
+  let mid = 0;
   let last = "";
   const read = () => {
     const doc = editor.doc;
     walls = new Map();
     furniture = [];
     const room = new Set<string>();
+    // What a kitchen plan adds round its room (document/kitchen-plan-shell.ts): it casts no shadow in it.
+    const shell = new Set(doc.features.flatMap((f) => (f.type === "sketch" ? (f.kitchenPlan?.made?.[ROOM_MADE] ?? []) : [])));
+    const shadowless = new Set<string>();
+    flats = new Map();
+    let [z0, z1] = [Infinity, -Infinity];
     const boxes = new Map<string, BodyMesh["metrics"]["bbox"]>();
     let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
     let [w0, v0, w1, v1] = [Infinity, Infinity, -Infinity, -Infinity];
@@ -75,6 +84,12 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
         if (!slabs.has(mesh)) slabs.set(mesh, slabOf(mesh.vertices, mesh.indices));
         const slab = slabs.get(mesh);
         if (slab) walls.set(id, slab);
+        if (slab) [z0, z1] = [Math.min(z0, lo[2]!), Math.max(z1, hi[2]!)];
+        if (shell.has(featureOfBody(bodyOrigin(doc, id)))) {
+          shadowless.add(id);
+          // Flat and wide: its floor or its ceiling.
+          if (!slab && hi[2]! - lo[2]! < Math.min(hi[0]! - lo[0]!, hi[1]! - lo[1]!) / 4) flats.set(id, [lo[2]!, hi[2]!]);
+        }
         [w0, v0, w1, v1] = [Math.min(w0, lo[0]!), Math.min(v0, lo[1]!), Math.max(w1, hi[0]!), Math.max(v1, hi[1]!)];
       } else {
         boxes.set(id, mesh.metrics.bbox);
@@ -127,7 +142,8 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     const known = furniture.filter((body) => facing.has(body));
     counts = known.length ? known : furniture;
     // A back panel or a unit against a wall lies in its plane: the wall drawn behind, not in patches through it.
-    viewport.setBehind(room);
+    viewport.setBehind(room, shadowless);
+    mid = (z0 + z1) / 2;
     if (canvas) canvas.dataset.walls = String(walls.size);
     last = "";
   };
@@ -144,13 +160,16 @@ export function bindWallCutaway(root: HTMLElement, viewport: Viewport, editor: E
     // A dressing's walls seen from behind, with or without the walls of a room: out too, never the whole dressing.
     const pieces = withFurniture ? piecesOut(piecesInTheWay(dressing, eye), dressingBodies, counts, hidden) : new Set<string>();
     for (const id of pieces) hidden.add(id);
-    viewport.setCutaway(new Set([...cut, ...hidden]));
+    // The ceiling seen from above (the floor from below) goes too.
+    const flat = Number.isFinite(mid) ? flatsBehind(flats, mid, eye[2]) : [];
+    viewport.setCutaway(new Set([...cut, ...hidden, ...flat]));
     viewport.setSketchCutaway(new Set([...drawn].filter(([, bodies]) => bodies.every((id) => hidden.has(id))).map(([sketch]) => sketch)));
     // How many are out of the view, on the view itself (for the tests).
     if (canvas) {
       canvas.dataset.wallsCut = String(cut.size);
       canvas.dataset.furnitureCut = String(hidden.size);
       canvas.dataset.piecesCut = String(pieces.size);
+      canvas.dataset.flatsCut = String(flat.length);
     }
   };
   viewport.onEachFrame(update);

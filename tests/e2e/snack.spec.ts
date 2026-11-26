@@ -1,6 +1,6 @@
 /** Snack et comptoir : sur l'îlot d'une cuisine proposée, un snack au dos, puis en bar ; ses consoles au devis. */
 import { expect, test, type Page } from "@playwright/test";
-import { newProject } from "./helpers";
+import { newProject, wallsOnly } from "./helpers";
 
 const click = (page: Page, selector: string) => page.evaluate((s) => document.querySelector<HTMLElement>(s)?.click(), selector);
 
@@ -14,6 +14,7 @@ test("un snack au dos de l'îlot, ses tabourets, puis en bar ; les consoles au d
   const plan = page.getByRole("dialog", { name: "Plan de cuisine" });
   await plan.getByRole("button", { name: "En L à gauche", exact: true }).click();
   await plan.getByLabel("Îlot", { exact: true }).check();
+  await wallsOnly(plan);
   await plan.getByRole("button", { name: "Créer le plan" }).click();
   await plan.locator("[data-propose]").click();
   const confirm = page.getByRole("button", { name: "Proposer", exact: true });

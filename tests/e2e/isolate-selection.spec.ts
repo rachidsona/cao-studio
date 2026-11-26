@@ -1,6 +1,6 @@
 /** « Isoler la sélection » : plusieurs éléments choisis restent seuls dans la vue, pour y travailler. */
 import { expect, test, type Page } from "@playwright/test";
-import { newProject } from "./helpers";
+import { newProject, wallsOnly } from "./helpers";
 
 const click = (page: Page, selector: string) => page.evaluate((s) => document.querySelector<HTMLElement>(s)?.click(), selector);
 const shot = async (page: Page, name: string) => {
@@ -16,6 +16,7 @@ test("deux caissons choisis, isolés par le bouton, puis tout montré ; la touch
   await click(page, '[data-workshop="kitchen-plan"]');
   const plan = page.getByRole("dialog", { name: "Plan de cuisine" });
   await plan.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await wallsOnly(plan);
   await plan.getByRole("button", { name: "Créer le plan" }).click();
   await plan.locator('[data-open-run="A"]').click();
   const add = plan.locator('[data-fold="add"]');
@@ -93,6 +94,7 @@ test("« Cacher la sélection » : deux pièces cachées d'un coup (pas leurs ca
   await click(page, '[data-workshop="kitchen-plan"]');
   const plan = page.getByRole("dialog", { name: "Plan de cuisine" });
   await plan.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await wallsOnly(plan);
   await plan.getByRole("button", { name: "Créer le plan" }).click();
   await plan.locator('[data-open-run="A"]').click();
   const add = plan.locator('[data-fold="add"]');
@@ -154,6 +156,7 @@ test("« Cacher la sélection » sur la façade d'un tiroir : le tiroir entier s
   await click(page, '[data-workshop="kitchen-plan"]');
   const plan = page.getByRole("dialog", { name: "Plan de cuisine" });
   await plan.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await wallsOnly(plan);
   await plan.getByRole("button", { name: "Créer le plan" }).click();
   await plan.locator('[data-open-run="A"]').click();
   const add = plan.locator('[data-fold="add"]');
@@ -191,6 +194,7 @@ test("« Modifier la sélection » sur une porte : l'outil Façades, sur ses fa�
   await click(page, '[data-workshop="kitchen-plan"]');
   const plan = page.getByRole("dialog", { name: "Plan de cuisine" });
   await plan.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await wallsOnly(plan);
   await plan.getByRole("button", { name: "Créer le plan" }).click();
   await plan.locator('[data-open-run="A"]').click();
   const add = plan.locator('[data-fold="add"]');
@@ -220,6 +224,7 @@ test("« Modifier la sélection » sur le panneau d'angle : Façades sur la port
   await click(page, '[data-workshop="kitchen-plan"]');
   const plan = page.getByRole("dialog", { name: "Plan de cuisine" });
   await plan.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await wallsOnly(plan);
   await plan.getByRole("button", { name: "Créer le plan" }).click();
   await plan.locator('[data-open-run="A"]').click();
   const corners = plan.locator('[data-fold="corners"]');

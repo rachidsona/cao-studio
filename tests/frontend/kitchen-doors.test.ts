@@ -134,6 +134,15 @@ describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
     const sketch = doc.features.find((f) => f.id === made.sketch)!;
     expect(sketch.type === "sketch" && sketch.frame?.origin.map(Math.round)).toEqual(cab.origin.map((v, i) => Math.round(i === 1 ? v + cab.depth - 3 : v)));
     expect(kitchenPlanIn(doc, base.id)!.runs!.A![0]).toMatchObject({ model: "space", width: 968, from: "app-fridge-surround", furnished: made.sketch });
+    // The unit it was is the surround — not a base unit with two doors —, and « Remettre le meuble d'origine » puts it back, its fridge as high.
+    const { heldModel, withCaissonUnfurnished } = await import("../../frontend/src/document/caisson-unit");
+    expect(heldModel(doc, kitchenPlanIn(doc, base.id)!.runs!.A![0]!)).toBe("app-fridge-surround");
+    const back = withCaissonUnfurnished(doc, made.sketch);
+    if (typeof back === "string") throw new Error(back);
+    expect(kitchenPlanIn(back.doc, base.id)!.runs!.A![0]).toMatchObject({ model: "app-fridge-surround", width: 968, fridge: 1800 });
+    expect(back.doc.features.filter((f) => f.type === "cabinet").map((f) => f.name)).toEqual([cab.name]);
+    const again = back.doc.features.find((f) => f.type === "appliance" && f.model === "fridge-american")!;
+    expect(again.type === "appliance" && again.height).toBe(1800);
   });
 
   it("la hauteur du réfrigérateur se règle : le caisson du dessus prend le reste, jamais moins de 20 cm", () => {
