@@ -29,20 +29,22 @@ export function kitchenCap(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, 
   const s = kitchenSizes(p);
   const overhang = p.capOverhang ?? CAP.overhang;
   const thick = p.cap === "box" ? (p.capHeight ?? CAP.height) : (p.capThickness ?? CAP.thickness);
+  // Its depth off the wall set (58 cm, as the columns): the same over every unit, in one piece; else as each unit under it.
+  const fixed = p.capDepth ? p.capDepth : null;
   const under: Under[] = [];
   for (const pl of fill.placed) {
     const role = applianceOf(pl.item)?.role;
     const tall = pl.row === "base" && pl.entry.kind === "tall";
     if ((pl.row !== "wall" && !tall) || role === "hood") continue;
     const size = itemSize(p, pl.item, pl.entry);
-    under.push({ from: pl.at, to: pl.at + pl.item.width, depth: isFiller(pl.item) ? p.wallDepth : size.depth, top: size.z + size.height });
+    under.push({ from: pl.at, to: pl.at + pl.item.width, depth: fixed ?? (isFiller(pl.item) ? p.wallDepth : size.depth), top: size.z + size.height });
     if (pl.row === "wall" && (pl.item.side ?? pl.entry.side) === "top") notes.push(`${pl.entry.name} ${pl.item.width} (${run.id}) : sa porte relevante bute contre la casquette — mettez une porte battante, ou pas de casquette.`);
   }
   // Up in the corners: the wall corner unit, its fronts and fillers.
   for (const side of ["left", "right"] as const) {
     const high = wallRow ? wallCornerSide(p, run, side) : null;
     if (!high) continue;
-    for (const [a, b] of [...(high.cabinet ? [high.cabinet] : []), ...high.fronts.map((f): [number, number] => [f.from, f.to])]) under.push({ from: a, to: b, depth: p.wallDepth, top: s.wallTop });
+    for (const [a, b] of [...(high.cabinet ? [high.cabinet] : []), ...high.fronts.map((f): [number, number] => [f.from, f.to])]) under.push({ from: a, to: b, depth: fixed ?? p.wallDepth, top: s.wallTop });
   }
   if (!under.length) return;
   // Stretches of the same depth and top, touching: one casquette each (a corner's front lies over its own cabinet).
@@ -88,7 +90,7 @@ export function kitchenCap(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, 
       ends.push(Math.max(...next));
     }
     ends.push(b);
-    const depth = r.depth + FRONT + overhang;
+    const depth = fixed ?? r.depth + FRONT + overhang;
     for (let i = 0; i + 1 < ends.length; i++) {
       const [u0, u1] = [ends[i]!, ends[i + 1]!];
       const tag = `${run.id}${n++ ? n : ""}`;

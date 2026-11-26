@@ -40,6 +40,12 @@ describe("casquette des meubles hauts", () => {
       ["Casquette A", -30, 600, -(D + 49), 0, TOP, TOP + 38],
       ["Casquette A2", 600, 1230, -399, 0, TOP, TOP + 38],
     ]);
+    // Its depth set (58 cm): one piece over the column and the wall unit, 58 cm off the wall everywhere — in a caisson too.
+    expect(pieces({ ...p, capDepth: 580 })).toEqual([["Casquette A", -30, 1230, -580, 0, TOP, TOP + 38]]);
+    const box = pieces({ ...p, cap: "box", capDepth: 580 });
+    expect(box.filter((b) => b[0] === "Casquette A" || b[0] === "Bandeau de casquette A").map((b) => b[3])).toEqual([-580, -580]);
+    expect(capProblem({ ...p, capDepth: 100 })).toMatch(/15 à 90 cm/);
+    expect(capProblem({ ...p, capDepth: 0 })).toBeNull();
   });
 
   it("en caisson : le dessus, le bandeau devant et les bouts aux bouts libres", () => {

@@ -80,8 +80,9 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
     const end = input.selectionEnd ?? input.value.length;
     input.value = input.value.slice(0, start) + text + input.value.slice(end);
     const caret = start + text.length;
-    input.setSelectionRange(caret, caret);
+    // Focused first: a number field given the focus selects all of itself (ui/select-on-focus.ts) — the caret after.
     input.focus();
+    input.setSelectionRange(caret, caret);
   };
   const backspace = () => {
     const start = input.selectionStart ?? input.value.length;
@@ -89,8 +90,8 @@ export function openCalculator(o: CalculatorOptions): CalculatorHandle {
     if (start !== end) input.value = input.value.slice(0, start) + input.value.slice(end);
     else if (start > 0) input.value = input.value.slice(0, start - 1) + input.value.slice(start);
     const caret = Math.max(0, start === end ? start - 1 : start);
-    input.setSelectionRange(caret, caret);
     input.focus();
+    input.setSelectionRange(caret, caret);
   };
   const negate = () => {
     const v = input.value.trim();

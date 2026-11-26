@@ -508,6 +508,8 @@ test("plan de cuisine : « Voir » isole un linéaire, de face, avec ses cotes ;
   await field.fill(`${was} - ${was}`);
   await calculator.getByRole("button", { name: "Diviser" }).click();
   await calculator.getByRole("button", { name: "6", exact: true }).click();
+  // Each key of the keypad goes on after the last one (the field focused again does not select all of itself).
+  await expect(field).toHaveValue(`${was} - ${was}÷6`);
   await shot(page, "16b-calculatrice-cote");
   await calculator.getByRole("button", { name: "Valider" }).click();
   await expect.poll(async () => /500 \(A\d+\)/.test(await tree(page)), { timeout: 60_000 }).toBe(true);

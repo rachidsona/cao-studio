@@ -69,7 +69,8 @@ export function planFields(host: { plan(): KitchenFloorPlan; unit(): DisplayUnit
     if (!kind) return [choice];
     // Caissons: their height and depth (each as wide as the unit under it).
     if (kind === "units") return [choice, number("Hauteur des caissons", "capHeight", CAP.unit), number("Profondeur des caissons", "capDepth", CAP.unitDepth)];
-    return [choice, kind === "box" ? number("Hauteur de la casquette", "capHeight", CAP.height) : number("Épaisseur de la casquette", "capThickness", CAP.thickness), number("Débord de la casquette", "capOverhang", CAP.overhang, true)];
+    // Its depth off the wall, the same everywhere (58 cm: as the columns); 0: as the units under it, plus the overhang.
+    return [choice, kind === "box" ? number("Hauteur de la casquette", "capHeight", CAP.height) : number("Épaisseur de la casquette", "capThickness", CAP.thickness), number("Débord de la casquette", "capOverhang", CAP.overhang, true), number("Profondeur de la casquette (0 : celle des meubles)", "capDepth", 0, true)];
   };
   return { number, check, select, look, cap };
 }
