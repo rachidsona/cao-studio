@@ -335,3 +335,23 @@ test("plan de cuisine, « Plan fixe » : la carte ouverte reste seule, son titre
   await expect(heads).toHaveCount(all);
   expect(errors).toEqual([]);
 });
+
+test("plan de cuisine : « Caissons en Répartition », la cuisine proposée faite de caissons du dressing, bâtie par le noyau", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-caissons-repartition");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-ribbon-tab="kitchen"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await openCard(tool, /^Façades$/);
+  await tool.locator('[data-plan-switch="asCaissons"]').check();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator("[data-propose]").click();
+  await expect(page.getByText(/Cuisine proposée/).first()).toBeVisible();
+  const tree = page.getByLabel(/^Navigateur : corps/);
+  await expect(tree.getByText(/^Caisson — /).first()).toBeAttached({ timeout: 60_000 });
+  await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/caissons-repartition.png` });
+  expect(errors).toEqual([]);
+});

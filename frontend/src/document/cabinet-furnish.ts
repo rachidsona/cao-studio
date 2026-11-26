@@ -101,8 +101,33 @@ export function withCabinetFurnished(doc: CadDocument, cabinetId: string, spec?:
   return { doc: freed ? withRoomLinked(placed.doc, freed, placed.sketch) : placed.doc, sketch: placed.sketch, notes };
 }
 
-/** Each unit of the plan's runs that is one of « Mes caissons » made that caisson, in its place. */
+/**
+ * Each unit of the plan's runs that is one of « Mes caissons » made that caisson, in its place; with « Caissons en
+ * Répartition » (`asCaissons`), every other unit too, as « Isoler et aménager le caisson » does it — the ones that cannot
+ * be (a corner unit, a fridge's surround, a casquette) stay as they are.
+ */
 export function withCaissonsPlaced(base: CadDocument, planId: string): { doc: CadDocument; problems: string[] } {
+  const placed = withOwnCaissons(base, planId);
+  return kitchenPlanIn(placed.doc, planId)?.asCaissons ? { doc: withUnitsFurnished(placed.doc, planId), problems: placed.problems } : placed;
+}
+
+/** Every unit the plan made, one after the other, made a caisson of the dressing in its place. */
+function withUnitsFurnished(base: CadDocument, planId: string): CadDocument {
+  let doc = base;
+  const tried = new Set<string>();
+  for (let guard = 0; guard < 200; guard++) {
+    const plan = kitchenPlanIn(doc, planId);
+    const next = Object.keys(plan?.made ?? {}).flatMap((run) => runCabinets(doc, planId, run).filter((x) => x.item && !tried.has(x.item)))[0];
+    if (!next) break;
+    tried.add(next.item!);
+    const made = withCabinetFurnished(doc, next.cabinet);
+    if (typeof made !== "string") doc = made.doc;
+  }
+  return doc;
+}
+
+/** Each unit of the plan's runs that is one of « Mes caissons » made that caisson, in its place. */
+function withOwnCaissons(base: CadDocument, planId: string): { doc: CadDocument; problems: string[] } {
   let doc = base;
   const problems: string[] = [];
   for (let guard = 0; guard < 50; guard++) {

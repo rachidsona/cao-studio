@@ -264,6 +264,8 @@ export interface KitchenFloorPlan {
   kickLook?: string;
   /** By model of the catalogue (its id without the width), the depth of its units here (mm), unless one is set apart. */
   modelDepths?: Record<string, number>;
+  /** « Caissons en Répartition »: each unit put made a caisson of the dressing at once (Étagères, Niche, Tiroirs… as there). */
+  asCaissons?: boolean;
   /**
    * The fronts of all its units (each unit's own, set in the 3D, over it): fitted over the carcass or into it, their
    * gap and thickness (mm), their style, their handles (none: handleless; « gorge »: on profiles), a lacquer's colour.

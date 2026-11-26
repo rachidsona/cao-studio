@@ -222,7 +222,7 @@ export class KitchenPlanTool {
       islandRows ? this.fields.number("Passage devant l'îlot", "passage") : null,
       islandRows ? this.fields.number("Longueur de l'îlot", "islandLength") : null,
       islandRows ? this.fields.number("Profondeur de l'îlot", "islandDepth") : null, islandRows ? this.fields.number("Décalage de l'îlot (0 : au milieu du mur A)", "islandShift", 0, true, true) : null,
-      el("h3", { class: "panel-title" }, "Façades"), this.fields.select("Matière des façades", plan.frontMaterial ?? "lacquer-white", frontChoices(plan.frontMaterial), (v) => this.set({ frontMaterial: v })), ...frontFields(plan, this.editor.unit, (patch) => this.set(patch)), el("h3", { class: "panel-title" }, "Matières et finitions"),
+      el("h3", { class: "panel-title" }, "Façades"), this.fields.select("Matière des façades", plan.frontMaterial ?? "lacquer-white", frontChoices(plan.frontMaterial), (v) => this.set({ frontMaterial: v })), ...frontFields(plan, this.editor.unit, (patch) => this.set(patch)), this.fields.check("Caissons en Répartition (réglés comme au dressing)", "asCaissons"), el("h3", { class: "panel-title" }, "Matières et finitions"),
       this.fields.look(materials),
       this.fields.check("Crédence", "splashback"), plan.splashback !== false ? this.fields.check("Crédence seulement sous la hotte", "splashbackHoodOnly") : null,
       this.fields.check("Plinthes", "kick"), this.fields.check("Joues de finition aux bouts libres (colonnes, meubles hauts)", "endPanels"), ...this.fields.cap(),
@@ -275,7 +275,7 @@ export class KitchenPlanTool {
     }
     const made = withKitchenChanged(this.editor.doc, planId, this.plan);
     if (typeof made === "string") return this.editor.notify(made, "error");
-    await this.editor.change(made.doc);
+    await this.editor.change(withCaissonsPlaced(made.doc, planId).doc);
     this.editor.notify(made.problems.length ? `Plan modifié. ${made.problems.join(" ")}` : "Plan modifié : la cuisine a suivi.", made.problems.length ? "info" : "success");
     this.draw();
   }
@@ -339,7 +339,7 @@ export class KitchenPlanTool {
     if (kitchenStarted(plan) && !(await askConfirm("Les linéaires seront remplis à nouveau : ce qui y est posé sera remplacé. Continuer ?", "Proposer"))) return;
     const made = withKitchenBuilt(this.editor.doc, planId, proposeKitchen(plan, kitchenRoomInfo(this.editor.doc, plan)));
     if (typeof made === "string") return this.editor.notify(made, "error");
-    await this.editor.change(made.doc);
+    await this.editor.change(withCaissonsPlaced(made.doc, planId).doc);
     this.frame();
     this.editor.notify(made.problems.length ? `Cuisine proposée. ${made.problems.join(" ")}` : "Cuisine proposée : retouchez chaque linéaire en le cliquant.", made.problems.length ? "info" : "success");
     this.draw();
