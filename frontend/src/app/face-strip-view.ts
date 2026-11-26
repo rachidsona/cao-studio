@@ -25,7 +25,7 @@ import { sketchRegions } from "../sketcher/polylines";
 import { planeForFace } from "../sketcher/projection";
 
 /** What the line starts from: a line (an edge, the line parallel to it) or a point (a corner, the line across). */
-export type Start = "edge" | "corner";
+export type Start = "edge" | "corner" | "face";
 
 /** What a click would take, picking: an edge (`trace`: a line of a sketch drawn on the face), a corner, the face, a sketch area. */
 export type Hover = { kind: "edge"; edge: FaceEdge; trace?: true } | { kind: "corner"; index: number } | { kind: "face" } | { kind: "region" };
@@ -41,6 +41,8 @@ export function startOnFace(viewport: Viewport, face: LoadedFace, event: Pointer
   const p = rayToSketch(face.frame, origin, direction);
   if (!p) return null;
   const snap = px * viewport.worldPerPixel();
+  // From a face: the face itself is what a click takes, not its edges nor its corners.
+  if (start === "face") return null;
   if (start === "corner") {
     // Only the real corners: not the points along a circle or an arc read as short segments.
     const corner = polygonCorners(face.polygon).find((i) => Math.hypot(p[0] - face.polygon[i]![0], p[1] - face.polygon[i]![1]) <= snap);
@@ -79,7 +81,14 @@ export function planeAcross(face: LoadedFace, [a, b]: [Vec2, Vec2]): { origin: V
  * Where the line starts from: an edge (kept in 3D, to be carried to another face) or a corner of a face. `trace`: the
  * edge is a line of a sketch drawn on the face (a trace made before), the new line measured from it, on the pointer's side.
  */
-export type Origin = { kind: "edge"; face: string; edge: FaceEdge; a3: Vec3; b3: Vec3; trace?: true } | { kind: "corner"; face: string; index: number; at3: Vec3 };
+export type Origin = { kind: "edge"; face: string; edge: FaceEdge; a3: Vec3; b3: Vec3; trace?: true } | { kind: "corner"; face: string; index: number; at3: Vec3 } | { kind: "plane"; face: string; at3: Vec3; normal: Vec3 };
+
+/** What the line starts from, clicked on `face`: its edge, its corner, or — « Départ » a face — the face itself (its plane); null: the face or the area is pulled whole. */
+export function originOf(face: LoadedFace, hover: Hover, start: Start): Origin | null {
+  if (hover.kind === "edge") return { kind: "edge", face: face.key, edge: hover.edge, a3: toWorld(face.frame, hover.edge.a[0], hover.edge.a[1]), b3: toWorld(face.frame, hover.edge.b[0], hover.edge.b[1]), ...(hover.trace ? { trace: true as const } : {}) };
+  if (hover.kind === "corner") return { kind: "corner", face: face.key, index: hover.index, at3: toWorld(face.frame, face.polygon[hover.index]![0], face.polygon[hover.index]![1]) };
+  return hover.kind === "face" && start === "face" ? { kind: "plane", face: face.key, at3: face.outline.center, normal: face.outline.normal } : null;
+}
 
 /** What the line snaps to, laying it: the middle of an edge or the centre of the face. */
 export type Middle = { point: Vec2; kind: "middle" | "center" };

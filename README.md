@@ -1346,7 +1346,7 @@ opération existante.
   face d'un autre corps** va jusqu'à elle et la suit toujours (« jusqu'à » gardé, `until` de l'extrusion, comme Prolonger
   élément : sa pente, et là où elle ira ; `FaceToReach`) ; une hauteur tapée reste une hauteur. Un seul outil réunit
   les deux manières de tracer sur un corps puis d'extruder, décrites ci-dessous. Le premier choix de son panneau,
-  « Tracé », les donne toutes : « Trait depuis une arête (parallèle) », « Trait depuis un coin (en travers) » (le trait
+  « Tracé », les donne toutes : « Trait depuis une arête (parallèle) », « Trait depuis une face (parallèle) » (une face cliquée — un chant de la même pièce ou une face d'une autre pièce — : le trait se pose sur la face où l'on amène ensuite le pointeur, là où le plan de la face cliquée la coupe, à la distance tapée depuis lui ; `planeReference`, `sketcher/face-strip.ts`), « Trait depuis un coin (en travers) » (le trait
   puis sa bande tirée ou poussée), « Ligne / polyligne », « Rectangle », « Cercle », « Décalage du contour » (une forme
   sur une face). Changer de tracé passe de l'une à l'autre sans fermer l'outil ; il s'ouvre sur le dernier tracé choisi.
   **Tracer sans extruder** : décochée, la case « Puis tirer / pousser » (la même pour les deux manières, gardée pour la

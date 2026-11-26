@@ -23,11 +23,11 @@ import { bodyLabel, uniqueId, uniqueName } from "../document/operations";
 import type { ExtrudeFeature, FaceRef, Feature, SketchFeature, Vec3 } from "../document/types";
 import { formatLength, fromDisplay } from "../measurements/units";
 import type { Vec2 } from "../sketcher/edit";
-import { bandRange, bandSketch, cornerReference, edgeReference, traceReference, referenceDistance, sideDistances, stripPolygon, type FaceEdge, type GrooveAnchor, type StripReference } from "../sketcher/face-strip";
+import { bandRange, bandSketch, cornerReference, edgeReference, planeReference, traceReference, referenceDistance, sideDistances, stripPolygon, type FaceEdge, type GrooveAnchor, type StripReference } from "../sketcher/face-strip";
 import { rayToSketch, toWorld } from "../sketcher/frame";
 import { axisParameter, dragStep, roundTo } from "../viewport/axis-drag";
 import type { FacePick } from "../viewport/viewport";
-import { aimAt, captureTargets, dot as dot3, loadFace, MIDDLE_NAMES, middleOnFace, regionUnder, startOnFace, StripMarks, type Hover, type Middle, type Origin, type LevelTargets, type LoadedFace, type SketchArea, type Start } from "./face-strip-view";
+import { aimAt, captureTargets, dot as dot3, loadFace, MIDDLE_NAMES, middleOnFace, originOf, regionUnder, startOnFace, StripMarks, type Hover, type Middle, type Origin, type LevelTargets, type LoadedFace, type SketchArea, type Start } from "./face-strip-view";
 import { WayChoice } from "./extrude-direction";
 import { axesRow, FaceToReach, isSketchTrace, isStripTrace, lastMagicTrace, MAGIC_EXTRUDE, pullAfter, rememberPull, rememberTrace, TRACES, type Trace } from "./magic-extrude";
 import { PanelTool, type ToolContext } from "./panel-tool";
@@ -106,8 +106,8 @@ export class FaceStripTool extends PanelTool {
     if (this.phase === "pick") {
       // What a click would start from, under the pointer.
       const kind = this.hover?.kind;
-      const hint = kind === "edge" ? (this.hover?.kind === "edge" && this.hover.trace ? "Cliquez : le trait part de ce tracé." : "Cliquez : le trait part de cette arête.") : kind === "corner" ? "Cliquez : le trait part de ce coin." : kind === "face" || kind === "region" ? "Cliquez : tirer ou pousser toute la face." : this.departure === "edge" ? "Survolez une arête : le trait lui sera parallèle." : "Survolez un coin : le trait partira en travers.";
-      this.typed.box.show("Départ", this.departure === "edge" ? "sur un trait" : "sur un point", hint);
+      const hint = kind === "edge" ? (this.hover?.kind === "edge" && this.hover.trace ? "Cliquez : le trait part de ce tracé." : "Cliquez : le trait part de cette arête.") : kind === "corner" ? "Cliquez : le trait part de ce coin." : kind === "face" && this.departure === "face" ? "Cliquez : le trait part de cette face." : kind === "face" || kind === "region" ? "Cliquez : tirer ou pousser toute la face." : this.departure === "edge" ? "Survolez une arête : le trait lui sera parallèle." : this.departure === "face" ? "Survolez une face : le trait lui sera parallèle, sur une autre face." : "Survolez un coin : le trait partira en travers.";
+      this.typed.box.show("Départ", this.departure === "edge" ? "sur un trait" : this.departure === "face" ? "sur une face" : "sur un point", hint);
     }
     else if (this.phase === "place") {
       const where = this.middle ? `${MIDDLE_NAMES[this.middle.kind]} — ` : "";
@@ -171,6 +171,8 @@ export class FaceStripTool extends PanelTool {
     const origin = this.origin;
     if (!origin) return null;
     if (origin.kind === "corner") return origin.face === face.key ? cornerReference(face.polygon, origin.index, p) : null;
+    // From a face: where its plane meets this one (none on itself, nor on a face parallel to it).
+    if (origin.kind === "plane") return planeReference(face.frame, origin.at3, origin.normal, p);
     // From a trace inside the face: its own line, distances measured towards the pointer.
     if (origin.face === face.key && origin.trace) return traceReference(origin.edge, p);
     if (origin.face === face.key) return edgeReference(face.polygon, origin.edge);
@@ -288,7 +290,7 @@ export class FaceStripTool extends PanelTool {
           this.hover = null;
           changed();
         }),
-        this.info(this.departure === "edge" ? "1. Survolez une arête (en vert) : le trait lui sera parallèle, copiable sur une autre face ; l'intérieur d'une face se tire ou se pousse." : "1. Survolez un coin (point orange) : le trait partira en travers ; l'intérieur d'une face se tire ou se pousse."),
+        this.info(this.departure === "face" ? "1. Cliquez une face — une face voisine de la même pièce (un chant) ou celle d'une autre pièce — : le trait lui sera parallèle, sur la face où vous amenez ensuite le pointeur, à la distance tapée depuis elle." : this.departure === "edge" ? "1. Survolez une arête (en vert) : le trait lui sera parallèle, copiable sur une autre face ; l'intérieur d'une face se tire ou se pousse." : "1. Survolez un coin (point orange) : le trait partira en travers ; l'intérieur d'une face se tire ou se pousse."),
         this.info(this.mode === "line" ? "Une ligne (Ctrl : double trait)." : "Double trait (Ctrl : une ligne)."),
         this.checkRow("Puis tirer / pousser", pullAfter(), (v) => (rememberPull(v), changed())), axesRow((l, c, f) => this.checkRow(l, c, f), this.ctx.viewport),
       ];
@@ -439,27 +441,25 @@ export class FaceStripTool extends PanelTool {
       if (this.ctx.viewport.pickFace(event)) this.ctx.notify("Face non plane ou encore en lecture : choisissez une face plane bordée d'arêtes droites.", "info");
       return;
     }
+    // An edge, a corner or — « Départ » a face — the face: the line starts from it; else the face or the area is pulled whole.
+    const origin = originOf(face, this.hover, this.departure);
+    if (origin) {
+      [this.origin, this.frozen, this.distance, this.phase] = [origin, false, 0, "place"];
+      return this.move(event);
+    }
     if (this.hover.kind === "region") {
       [this.band, this.faceRef, this.height, this.frozenHeight, this.target, this.reach.until] = [face.polygon, null, 0, false, null, null];
       [this.targets, this.phase] = [captureTargets(this.ctx.viewport), "pull"];
       return this.move(event);
     }
-    if (this.hover.kind === "face") {
-      void this.ctx.geometry.describe(face.pick.bodyId, [], face.pick.faceIndex).then(({ face: ref }) => {
-        if (!ref || ref.type !== "PLANE") return this.ctx.notify("Seules les faces planes se tirent ou se poussent.", "error");
-        [this.faceRef, this.band, this.height, this.frozenHeight, this.target, this.reach.until] = [ref, null, 0, false, null, null];
-        [this.targets, this.phase] = [captureTargets(this.ctx.viewport), "pull"];
-        this.redraw();
-        this.render();
-      });
-      return;
-    }
-    this.origin =
-      this.hover.kind === "edge"
-        ? { kind: "edge", face: face.key, edge: this.hover.edge, a3: this.world(face, this.hover.edge.a), b3: this.world(face, this.hover.edge.b), ...(this.hover.trace ? { trace: true as const } : {}) }
-        : { kind: "corner", face: face.key, index: this.hover.index, at3: this.world(face, face.polygon[this.hover.index] as Vec2) };
-    [this.frozen, this.distance, this.phase] = [false, 0, "place"];
-    this.move(event);
+    // The inside of a face: all of it pulled or pushed.
+    void this.ctx.geometry.describe(face.pick.bodyId, [], face.pick.faceIndex).then(({ face: ref }) => {
+      if (!ref || ref.type !== "PLANE") return this.ctx.notify("Seules les faces planes se tirent ou se poussent.", "error");
+      [this.faceRef, this.band, this.height, this.frozenHeight, this.target, this.reach.until] = [ref, null, 0, false, null, null];
+      [this.targets, this.phase] = [captureTargets(this.ctx.viewport), "pull"];
+      this.redraw();
+      this.render();
+    });
   }
   /** The line laid where it is (a click, or the distance typed): then pull or push its band. */
   private lay(event?: PointerEvent): void {

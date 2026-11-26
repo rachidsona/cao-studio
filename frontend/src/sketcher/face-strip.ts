@@ -175,6 +175,25 @@ export function traceReference(edge: FaceEdge, pointer: Vec2): StripReference {
 }
 
 /**
+ * Reference of another face (« Trait depuis une face »): the line where its plane (through `point`, `normal`, world)
+ * meets the plane of the face drawn on (its frame), distances measured in that face towards `pointer`. Null when the
+ * two are parallel: no line of one lies in the other.
+ */
+export function planeReference(frame: { origin: readonly number[]; u: readonly number[]; v: readonly number[] }, point: readonly number[], normal: readonly number[], pointer: Vec2): StripReference | null {
+  const d3 = (a: readonly number[], b: readonly number[]) => a[0]! * b[0]! + a[1]! * b[1]! + a[2]! * b[2]!;
+  // How far a point of the face is from the plane, as it moves along the face: f = f0 + g · p.
+  const g: Vec2 = [d3(normal, frame.u), d3(normal, frame.v)];
+  const slope = Math.hypot(g[0], g[1]);
+  if (slope < 0.2) return null;
+  const f0 = d3(normal, [frame.origin[0]! - point[0]!, frame.origin[1]! - point[1]!, frame.origin[2]! - point[2]!]);
+  // In the face: its distance to the line, signed; the foot of the pointer on the line.
+  const off = (f0 + g[0] * pointer[0] + g[1] * pointer[1]) / slope;
+  const n: Vec2 = [g[0] / slope, g[1] / slope];
+  const side = off < 0 ? -1 : 1;
+  return { origin: [pointer[0] - n[0] * off, pointer[1] - n[1] * off], normal: [n[0] * side, n[1] * side] };
+}
+
+/**
  * Reference of a corner of the face (as DIO starting from a point): the line through the corner across the face,
  * distances measured along the side the pointer goes along from the corner (of the two sides meeting there, the
  * one most in the pointer's direction). Null when the pointer is on the corner itself.

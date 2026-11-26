@@ -27,11 +27,26 @@ test("Magie extrude : départ sur un trait, distance tapée puis Entrée, hauteu
   // « Magie extrusion »: every trace in one choice — a line from an edge or a corner, or a shape on a face.
   const start = tool.getByRole("combobox", { name: "Tracé" });
   await expect(start).toHaveValue("edge");
-  await expect(start.locator("option")).toHaveText(["Trait depuis une arête (parallèle)", "Trait depuis un coin (en travers)", "Ligne / polyligne", "Rectangle", "Cercle", "Décalage du contour", "Rectangle par le centre", "Rectangle par 3 points (de biais)", "Cercle par 2 points", "Cercle par 3 points", "Arc (centre, départ, fin)", "Arc par 3 points", "Polygone", "Oblong", "Ovale", "Courbe"]);
+  await expect(start.locator("option")).toHaveText(["Trait depuis une arête (parallèle)", "Trait depuis un coin (en travers)", "Trait depuis une face (parallèle)", "Ligne / polyligne", "Rectangle", "Cercle", "Décalage du contour", "Rectangle par le centre", "Rectangle par 3 points (de biais)", "Cercle par 2 points", "Cercle par 3 points", "Arc (centre, départ, fin)", "Arc par 3 points", "Polygone", "Oblong", "Ovale", "Courbe"]);
   const values = page.getByRole("status", { name: "Mesures" });
   await expect(values).toContainText("sur un trait");
   await start.selectOption("corner");
   await expect(values).toContainText("sur un point");
+  // From a face: a click on a face no longer pulls it — the line starts from it, to be laid on another face.
+  await start.selectOption("face");
+  await expect(values).toContainText("sur une face");
+  await expect(tool).toContainText("Cliquez une face");
+  {
+    const box = (await page.locator("canvas.cad-view").boundingBox())!;
+    const [x, y] = [box.x + box.width * 0.3, box.y + box.height * 0.38];
+    await page.mouse.move(x, y);
+    await page.mouse.move(x + 1, y);
+    await expect(values).toContainText("le trait part de cette face");
+    await page.mouse.click(x + 1, y);
+    // Still on the face it starts from: no line of its own plane lies in it.
+    await expect(tool).toContainText("Ce départ ne donne pas de trait sur cette face");
+    await page.keyboard.press("Escape");
+  }
   // A shape on a face: the same tool, its other way to draw, then back to the line from an edge.
   await start.selectOption("rectangle");
   await expect(tool.getByRole("combobox", { name: "Tracé" })).toHaveValue("rectangle");

@@ -17,12 +17,13 @@ import type { LoadedFace } from "./face-strip-view";
 import type { ToolContext } from "./panel-tool";
 export const MAGIC_EXTRUDE = "Magie extrusion";
 
-/** The traces: the first two draw a line from an edge or a corner (face strip), the others a shape on a face. */
-export type Trace = "edge" | "corner" | "line" | "rectangle" | "circle" | "offset" | "arc" | "polygon" | "slot" | "oval" | "curve" | "rectangle-center" | "rectangle-3pt" | "circle-2pt" | "circle-3pt" | "arc-3pt";
+/** The traces: the first three draw a line from an edge, a corner or a face (face strip), the others a shape on a face. */
+export type Trace = "edge" | "corner" | "face" | "line" | "rectangle" | "circle" | "offset" | "arc" | "polygon" | "slot" | "oval" | "curve" | "rectangle-center" | "rectangle-3pt" | "circle-2pt" | "circle-3pt" | "arc-3pt";
 
 export const TRACES: [Trace, string][] = [
   ["edge", "Trait depuis une arête (parallèle)"],
   ["corner", "Trait depuis un coin (en travers)"],
+  ["face", "Trait depuis une face (parallèle)"],
   ["line", "Ligne / polyligne"],
   ["rectangle", "Rectangle"],
   ["circle", "Cercle"],
@@ -42,7 +43,7 @@ export const TRACES: [Trace, string][] = [
 export const isSketchTrace = (t: Trace): boolean => TRACES.findIndex(([v]) => v === t) > TRACES.findIndex(([v]) => v === "offset");
 
 /** Whether the trace is a line drawn from an edge or a corner, then pulled in its band. */
-export const isStripTrace = (t: Trace): t is "edge" | "corner" => t === "edge" || t === "corner";
+export const isStripTrace = (t: Trace): t is "edge" | "corner" | "face" => t === "edge" || t === "corner" || t === "face";
 
 /** The trace chosen last, for the session: the tool opens on it. */
 let lastTrace: Trace = "edge";

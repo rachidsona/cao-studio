@@ -5,7 +5,7 @@ import type { CadDocument, Feature, SketchFeature } from "../../frontend/src/doc
 import type { FaceOutline } from "../../frontend/src/geometry/protocol";
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
 import { Recomputer } from "../../frontend/src/history/recompute";
-import { bandPolygon, bandRange, bandSketch, cornerReference, facePolygon, polygonCorners, traceReference, inwardDistance, polygonEdges, referenceDistance, sideDistances, stripPolygon } from "../../frontend/src/sketcher/face-strip";
+import { bandPolygon, bandRange, bandSketch, cornerReference, facePolygon, planeReference, polygonCorners, traceReference, inwardDistance, polygonEdges, referenceDistance, sideDistances, stripPolygon } from "../../frontend/src/sketcher/face-strip";
 import { sketchFrame } from "../../frontend/src/sketcher/frame";
 import { sketchRegions } from "../../frontend/src/sketcher/polylines";
 import { setupKernel } from "./kernel-setup";
@@ -222,5 +222,34 @@ describe("départ sur un tracé", () => {
     // The band 10 from it, towards the pointer.
     const band = stripPolygon([[0, 0], [80, 0], [80, 50], [0, 50]], right, 0, 10);
     expect(band?.some(([x]) => Math.abs(x - 40) < 1e-9)).toBe(true);
+  });
+});
+
+describe("trait depuis une face", () => {
+  // The face drawn on: a side standing in the plane y = 0, x across and z up.
+  const side = { origin: [0, 0, 0], u: [1, 0, 0], v: [0, 0, 1] };
+
+  it("part de là où le plan de la face choisie coupe la face tracée, mesuré vers le pointeur", () => {
+    // The top of a shelf at 500 mm: the line across the side at that height, distances up or down from it.
+    const above = planeReference(side, [300, -200, 500], [0, 0, 1], [200, 620])!;
+    expect(above.origin).toEqual([200, 500]);
+    expect(above.normal).toEqual([0, 1]);
+    expect(referenceDistance(above, [200, 620])).toBeCloseTo(120, 9);
+    const below = planeReference(side, [300, -200, 500], [0, 0, 1], [200, 300])!;
+    expect(below.origin).toEqual([200, 500]);
+    expect(below.normal[1]).toBe(-1);
+    expect(referenceDistance(below, [200, 300])).toBeCloseTo(200, 9);
+    // A neighbouring face of the same board (its front edge, in the plane x = 0): the line parallel to that edge.
+    const edge = planeReference(side, [0, 9, 0], [-1, 0, 0], [50, 400])!;
+    expect(edge.origin[0]).toBeCloseTo(0, 9);
+    expect(Math.abs(edge.normal[0])).toBe(1);
+    expect(referenceDistance(edge, [50, 400])).toBeCloseTo(50, 9);
+  });
+
+  it("une face de biais : la distance se lit dans la face tracée ; une face parallèle ne donne pas de trait", () => {
+    const k = Math.SQRT1_2;
+    const slanted = planeReference(side, [0, 0, 0], [0, k, k], [10, 100])!;
+    expect(referenceDistance(slanted, [10, 100])).toBeCloseTo(100, 9);
+    expect(planeReference(side, [0, 300, 0], [0, 1, 0], [10, 100])).toBeNull();
   });
 });
