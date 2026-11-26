@@ -8,7 +8,7 @@
  */
 import { openKitchenDossier } from "./kitchen-dossier-view";
 import { SPACE } from "../../features/kitchen-run-items";
-import { withCaissonsPlaced } from "../../document/cabinet-furnish";
+import { withCaissonsPlaced, withRoomsLeft } from "../../document/cabinet-furnish";
 import * as THREE from "three";
 import { kitchenPlanIn, kitchenPlanOf, kitchenRunOf, kitchenStarted, runsLost, withKitchenBuilt, withKitchenChanged, withKitchenPlan } from "../../document/kitchen-floor";
 import { pieceItemOf } from "../../document/kitchen-plan-add";
@@ -405,7 +405,7 @@ export class KitchenPlanTool {
     const plan = kitchenPlanIn(this.editor.doc, planId);
     if (!plan) return false;
     const [items, rest, corners] = editor.pending();
-    const built = withKitchenBuilt(this.editor.doc, planId, { runs: { ...plan.runs, [run.id]: items }, rest: { ...plan.rest, [run.id]: rest }, ...corners });
+    const built = withKitchenBuilt(withRoomsLeft(this.editor.doc, planId, run.id, items), planId, { runs: { ...plan.runs, [run.id]: items }, rest: { ...plan.rest, [run.id]: rest }, ...corners });
     if (typeof built === "string") {
       this.editor.notify(built, "error");
       return false;

@@ -19,7 +19,7 @@ import { el } from "../../ui/dom";
 import { panelHeader } from "../../ui/panel-close";
 import type { Editor } from "../editor";
 import { Folds, foldFocus } from "../../ui/fold";
-import { capUnits, familyModels, familyTabs, modelRow } from "./kitchen-catalog-view"; import { cardDepth, depthChoice, withNextDepth } from "./kitchen-model-depth";
+import { capUnits, familyModels, familyTabs, modelRow } from "./kitchen-catalog-view"; import { caissonsChoice, cardDepth, depthChoice, withNextDepth } from "./kitchen-model-depth";
 import { kickOf, withCorner, type CornerChange, type CornerSetting } from "../../document/kitchen-corners";
 import { cornerChoice, cornerChosen } from "./kitchen-corner-choice";
 import { quoteButton } from "../workshop/live-price";
@@ -78,7 +78,7 @@ export interface RunEditorHost {
 }
 
 export class RunEditor {
-  /** The depths given here to models (« Ajouter des meubles », for all of a model), not yet applied. */ private depths?: Record<string, number>;
+  /** The depths given here to models (« Ajouter des meubles », for all of a model), « Caissons en Répartition », not yet applied. */ private depths?: Record<string, number>; private asCaissons?: boolean;
   /** The corners chosen here, not yet applied. */
   private corners: CornerSetting = {};
   private items: KitchenRunItem[];
@@ -208,7 +208,7 @@ export class RunEditor {
     const k = this.kick;
     return {
       ...this.corners, ...(this.worktop === undefined ? {} : { noWorktop: { ...plan.noWorktop, [run.id]: !this.worktop } }),
-      ...(k.on === undefined ? {} : { noKick: { ...plan.noKick, [run.id]: !k.on } }), ...(k.back === undefined ? {} : { kickSetback: { ...plan.kickSetback, [run.id]: k.back } }), ...(k.look === undefined ? {} : { kickLook: k.look ?? undefined }), ...(this.depths ? { modelDepths: this.depths } : {}),
+      ...(k.on === undefined ? {} : { noKick: { ...plan.noKick, [run.id]: !k.on } }), ...(k.back === undefined ? {} : { kickSetback: { ...plan.kickSetback, [run.id]: k.back } }), ...(k.look === undefined ? {} : { kickLook: k.look ?? undefined }), ...(this.depths ? { modelDepths: this.depths } : {}), ...(this.asCaissons === undefined ? {} : { asCaissons: this.asCaissons }),
     };
   }
 
@@ -493,7 +493,7 @@ export class RunEditor {
       const own = myUnits().filter((e) => wall || e.kind !== "wall");
       rows = own.length ? own.map((e) => modelRow([e], unit, add, "data-add", free, depth)) : [el("p", { class: "py-2 text-gray-500 dark:text-gray-400" }, "Aucun meuble à vous : décrivez-les dans « Meubles de cuisine », onglet « Mes meubles ».")];
     } else rows = familyModels(family, wall).map((entries) => modelRow(entries, unit, add, "data-add", free, depth));
-    const box = el("div", {}, tabs, depthChoice(() => this.host.redraw()), el("div", { "aria-label": "Modèles à ajouter" }, ...rows));
+    const box = el("div", {}, tabs, depthChoice(() => this.host.redraw()), caissonsChoice(!!plan.asCaissons, (on) => ((this.asCaissons = on), this.touched())), el("div", { "aria-label": "Modèles à ajouter" }, ...rows));
     box.style.setProperty("--brass", BRASS);
     return [box];
   }

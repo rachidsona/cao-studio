@@ -16,14 +16,14 @@ const kitchen = (asCaissons: boolean) => {
 };
 
 describe("caissons en Répartition", () => {
-  it("cochée : chaque meuble devient un caisson du dressing, sa place gardée ; l'habillage reste le sien ; le plan de travail suit", () => {
+  it("cochée : chaque meuble devient un caisson du dressing, sa place gardée — l'habillage aussi, ses côtés et son réfrigérateur restant ; le plan de travail suit", () => {
     const { doc, id } = kitchen(true);
     const runs = kitchenPlanIn(doc, id)!.runs!.A!;
-    expect(runs.filter((i) => i.furnished).map((i) => i.from)).toEqual(["base-bas-2-portes", "base-bas-1-porte", "wall-haut-1-porte"]);
-    expect(runs.some((i) => i.model === "app-fridge-surround")).toBe(true);
-    // Only the surround's caisson is still a cabinet; three Répartitions stand in their places.
-    expect(doc.features.filter((f) => f.type === "cabinet").map((f) => f.name)).toEqual([expect.stringMatching(/^Habillage/)]);
-    expect(doc.features.filter((f) => f.type === "sketch" && f.name.startsWith("Caisson —")).length).toBe(3);
+    expect(runs.filter((i) => i.furnished).map((i) => i.from)).toEqual(["base-bas-2-portes", "base-bas-1-porte", "wall-haut-1-porte", "app-fridge-surround"]);
+    // No cabinet left; four Répartitions stand in their places, the surround's sides and fridge round the last.
+    expect(doc.features.filter((f) => f.type === "cabinet").length).toBe(0);
+    expect(doc.features.filter((f) => f.type === "sketch" && f.name.startsWith("Caisson —")).length).toBe(4);
+    expect(doc.features.filter((f) => f.name.startsWith("Côté gauche habillage") || (f.type === "appliance" && f.model === "fridge-american")).length).toBe(2);
     expect(doc.features.some((f) => f.type === "extrude" && f.name.startsWith("Plan de travail"))).toBe(true);
   });
 

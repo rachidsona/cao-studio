@@ -353,6 +353,13 @@ test("plan de cuisine : « Caissons en Répartition », la cuisine proposée fai
   await expect(tree.getByText(/^Caisson — /).first()).toBeAttached({ timeout: 60_000 });
   await expect(page.locator('[data-ref="status-recompute"]')).not.toContainText("erreur", { timeout: 30_000 });
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/caissons-repartition.png` });
+  // The option over the cards of « Ajouter des meubles » too; the run emptied, its caissons go with their places.
+  await tool.getByRole("button", { name: "Aménager" }).click();
+  const add = tool.locator('[data-fold="add"]');
+  if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+  await expect(tool.locator("[data-run-as-caissons]")).toBeChecked();
+  await tool.getByRole("button", { name: "Vider le linéaire" }).click();
+  await expect(tree.getByText(/^Caisson — /)).toHaveCount(0, { timeout: 60_000 });
   expect(errors).toEqual([]);
 });
 

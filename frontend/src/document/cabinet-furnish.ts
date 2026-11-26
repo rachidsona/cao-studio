@@ -37,11 +37,11 @@ function freedFromPlan(doc: CadDocument, c: CabinetFeature): { doc: CadDocument;
   const itemId = runCabinets(doc, owner.plan, owner.run).find((x) => x.cabinet === c.id)?.item;
   const item = items.find((i) => i.id === itemId);
   if (!item) return itemId === undefined && (plan.made?.[owner.run] ?? []).includes(c.id) ? "Un meuble d'angle ne s'aménage pas ainsi : choisissez un autre meuble du linéaire." : "Ce meuble n'est plus retrouvé dans son linéaire : refaites la cuisine, puis réessayez.";
-  // The caisson of a fridge's surround is a piece of it (its sides and its fridge stand round it): it stays the plan's.
-  if (applianceOf(item)?.role === "fridge-surround") return "Le caisson d'un habillage de réfrigérateur reste celui de l'habillage : changez ses étagères et ses portes avec les outils Caisson et Façades (l'habillage les garde).";
   const wall = rowOf(itemEntry(item)) === "wall";
-  // Its depth, and up in the wall row its height: the room is where the cabinet was, the caisson in it.
-  const space = { ...newItem(items, wall ? SPACE_WALL : SPACE, c.width), id: item.id, depth: c.depth, ...(wall ? { height: c.height } : {}), ...(item.own ? {} : { from: item.model }) };
+  // Its depth, and up in the wall row its height: the room is where the cabinet was, the caisson in it. A surround
+  // keeps its width (its sides round the caisson), its height and its fridge's: the plan still makes them (heldUnits).
+  const surround = applianceOf(item)?.role === "fridge-surround";
+  const space = { ...newItem(items, wall ? SPACE_WALL : SPACE, surround ? item.width : c.width), id: item.id, depth: c.depth, ...(wall ? { height: c.height } : surround && item.height ? { height: item.height } : {}), ...(surround && item.fridge ? { fridge: item.fridge } : {}), ...(item.own ? {} : { from: item.model }) };
   const built = withKitchenBuilt(doc, owner.plan, { runs: { ...plan.runs, [owner.run]: items.map((i) => (i === item ? space : i)) } });
   return typeof built === "string" ? built : { doc: built.doc, plan: owner.plan, run: owner.run, item: item.id };
 }
@@ -55,7 +55,10 @@ function withRoomLinked(doc: CadDocument, at: { plan: string; run: string; item:
   });
 }
 
-/** The caisson a kitchen cabinet is: its carcass, its back, its shelves, its doors or its drawers, their materials. */
+/**
+ * The caisson a kitchen cabinet is: its carcass, its back, its shelves, its doors or its drawers, their materials. On a
+ * plinth, its bottom and top run full width and its sides stand between them: nothing goes down in front of the plinth.
+ */
 function cabinetSpec(doc: CadDocument, c: CabinetFeature, fronts: FrontsFeature | undefined): CaissonSpec {
   const back = c.back === "none" ? 0 : c.backThickness;
   const inside: NicheRecipe = { steps: c.shelves > 0 ? [{ at: [], input: { count: c.shelves, thickness: c.thickness, mode: "equal", fixed: 0 } }] : [], equipment: [] };
@@ -67,7 +70,7 @@ function cabinetSpec(doc: CadDocument, c: CabinetFeature, fronts: FrontsFeature 
   const carcass = doc.bodyInfo?.[`${c.id}${PART_SEPARATOR}0`]?.material ?? "melamine-white";
   const facing = fronts ? doc.bodyInfo?.[`${fronts.id}${PART_SEPARATOR}0`]?.material : undefined;
   return {
-    input: { length: c.width, height: c.height, thickness: c.thickness, cases: 2, dividers: ["none"], boards: true, plinth: c.plinth, outer: c.construction === "sides-through" ? "side" : "board", single: "board", double: "side" },
+    input: { length: c.width, height: c.height, thickness: c.thickness, cases: 2, dividers: ["none"], boards: true, plinth: c.plinth, outer: c.construction === "sides-through" && !c.plinth ? "side" : "board", single: "board", double: "side" },
     depth: c.depth - back,
     ...(back > 0 ? { back: { thickness: back, split: "whole" as const } } : {}),
     ...(fronts && fronts.layout !== "drawers" ? { doors: { gap: fronts.gap, thickness: fronts.thickness, handles: fronts.handles, ...(pair ? {} : { joined: [0], ...(fronts.side === "right" ? { hinges: ["right" as const] } : {}) }) } } : {}),
@@ -112,6 +115,16 @@ export function withCabinetFurnished(doc: CadDocument, cabinetId: string, spec?:
 export function withCaissonsPlaced(base: CadDocument, planId: string): { doc: CadDocument; problems: string[] } {
   const placed = withOwnCaissons(base, planId);
   return kitchenPlanIn(placed.doc, planId)?.asCaissons ? { doc: withUnitsFurnished(placed.doc, planId), problems: placed.problems } : placed;
+}
+
+/**
+ * The caissons furnished in the rooms of a run that `items` no longer has (taken off its strip, « Vider le linéaire »)
+ * deleted with them, their panels and their sketch: nothing is left in the 3D the plan no longer knows.
+ */
+export function withRoomsLeft(doc: CadDocument, planId: string, run: string, items: readonly { id: string }[]): CadDocument {
+  const left = (kitchenPlanIn(doc, planId)?.runs?.[run] ?? []).filter((i) => i.furnished && !items.some((x) => x.id === i.id)).map((i) => i.furnished!);
+  const ids = doc.features.filter((f) => left.includes(f.id) || ((f.type === "extrude" || f.type === "niche") && !!f.sketch && left.includes(f.sketch))).map((f) => f.id);
+  return ids.length ? deleteFeatures(doc, ids).next : doc;
 }
 
 /** Every unit the plan made, one after the other, made a caisson of the dressing in its place. */

@@ -117,13 +117,23 @@ describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
     expect(gone.features.some((f) => f.name.startsWith("Côté droit habillage") || (f.type === "appliance" && f.model === "fridge-american") || f.type === "cabinet")).toBe(false);
   });
 
-  it("son caisson ne s'aménage pas à la main (il reste celui de l'habillage) : l'habillage ne disparaît pas", async () => {
+  it("son caisson s'aménage (une Répartition) : l'habillage reste, ses côtés et son réfrigérateur, le caisson à sa place", async () => {
     const { withCabinetFurnished } = await import("../../frontend/src/document/cabinet-furnish");
-    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: { A: [newItem([], "app-fridge-surround", 968)] }, made: {} });
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: { A: [{ ...newItem([], "app-fridge-surround", 968), fridge: 1800 }] }, made: {} });
     const built = withKitchenBuilt(base.doc, base.id, {});
     if (typeof built === "string") throw new Error(built);
     const cab = built.doc.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
-    expect(withCabinetFurnished(built.doc, cab.id)).toMatch(/habillage/);
+    const made = withCabinetFurnished(built.doc, cab.id);
+    if (typeof made === "string") throw new Error(made);
+    const doc = made.doc;
+    expect(doc.features.some((f) => f.type === "cabinet")).toBe(false);
+    expect(doc.features.filter((f) => f.name.startsWith("Côté gauche habillage") || f.name.startsWith("Côté droit habillage")).length).toBe(2);
+    const fridge = doc.features.find((f) => f.type === "appliance" && f.model === "fridge-american")!;
+    expect(fridge.type === "appliance" && fridge.height).toBe(1800);
+    // The Répartition where the caisson was: between the sides, over the fridge, as wide.
+    const sketch = doc.features.find((f) => f.id === made.sketch)!;
+    expect(sketch.type === "sketch" && sketch.frame?.origin.map(Math.round)).toEqual(cab.origin.map((v, i) => Math.round(i === 1 ? v + cab.depth - 3 : v)));
+    expect(kitchenPlanIn(doc, base.id)!.runs!.A![0]).toMatchObject({ model: "space", width: 968, from: "app-fridge-surround", furnished: made.sketch });
   });
 
   it("la hauteur du réfrigérateur se règle : le caisson du dessus prend le reste, jamais moins de 20 cm", () => {

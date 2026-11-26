@@ -12,7 +12,7 @@ import { FRONT, jointOf, kitchenRuns, kitchenSizes, lArm, runAt, runGeometry, sk
 import type { CornerDoorLook, KitchenFloorPlan, Vec3 } from "./types";
 import { ergonomics } from "../features/kitchen-appliances";
 import { originOf, type KitchenBox, type KitchenLayout, type KitchenUnit } from "../features/kitchen-layout";
-import { applianceOf, fillRun, isFiller, itemSize, openRoom, SURROUND, surroundFridge, type Placed, type RunFill } from "../features/kitchen-run-items";
+import { applianceOf, fillRun, heldUnits, isFiller, itemSize, openRoom, SURROUND, surroundFridge, type Placed, type RunFill } from "../features/kitchen-run-items";
 import { diagonalCorner, roundTerminal, roundedWorktop } from "./kitchen-shaped";
 import type { RunInfo } from "../features/room-runs";
 import { WALL_THICKNESS } from "./joinery-defaults";
@@ -56,14 +56,21 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     };
     // An appliance of the library in its box, turned as the run's cabinets.
     const put = (name: string, model: string, at: [Vec3, Vec3], finish = "inox") => box(name, "appliance", at, { appliance: { model, finish, rotation } });
+    // A caisson furnished by hand in its room (`asUnits`): all its unit made but its caisson, which it is.
+    let holding = false;
     const cabinet = (name: string, u: number, w: number, depth: number, z: number, height: number, rest: Pick<KitchenUnit, "plinth" | "shelves" | "layout"> & Partial<KitchenUnit>) => {
+      if (holding) return;
       const [lo, hi] = band(u, u + w, 0, depth, z, z + height);
       out.units.push({ name, origin: originOf(rotation, lo, hi), rotation, width: w, height, depth, run: run.id, ...rest });
     };
     for (const pl of fill.spaces) {
       const { height, depth, z } = itemSize(p, pl.item, pl.entry);
-      const [lo, hi] = band(pl.at, pl.at + pl.item.width, 0, depth, z, z + height);
-      out.kept.push({ name: pl.entry.name, origin: originOf(rotation, lo, hi), rotation, width: pl.item.width, height, depth, run: run.id, item: pl.item.id, plinth: 0, shelves: 0, layout: "none" });
+      // A surround's caisson furnished by hand: its room is between the sides, over the fridge.
+      const as = heldUnits({ spaces: [pl] })[0];
+      const lift = as && applianceOf(as.item)?.role === "fridge-surround" ? surroundFridge(p, as.item) + SURROUND.air : 0;
+      const [u0, u1, top] = lift ? [pl.at + FRONT, pl.at + pl.item.width - FRONT, itemSize(p, as!.item, as!.entry).height] : [pl.at, pl.at + pl.item.width, z + height];
+      const [lo, hi] = band(u0, u1, 0, depth, lift || z, top);
+      out.kept.push({ name: pl.entry.name, origin: originOf(rotation, lo, hi), rotation, width: u1 - u0, height: top - (lift || z), depth, run: run.id, item: pl.item.id, plinth: 0, shelves: 0, layout: "none" });
     }
     if (g.low) out.notes.push(`Pas de meubles hauts sur ${run.label.toLowerCase()} : le plafond y descend à ${Math.round(ceiling)} mm.`);
     let n = 0;
@@ -76,7 +83,9 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
       holes.push({ appliance, at: [x, y, p.worktopHeight], u, ...(soft ? { soft } : {}) });
     };
     const front = (pl: Placed): [number, number] => runAt(run, pl.at + pl.item.width / 2, run.back + D + FRONT);
-    for (const pl of fill.placed) {
+    const asUnits = heldUnits(fill);
+    for (const pl of [...fill.placed, ...asUnits]) {
+      holding = asUnits.includes(pl);
       const { entry, at } = pl;
       const w = pl.item.width;
       // A filler put by hand: a panel in front, low between plinth and worktop, or in the wall row.
@@ -172,6 +181,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
         box("Bandeau sous four", "panel", band(at + 1.5, at + w - 1.5, D, D + FRONT, plinth, top - OVEN - 2));
       }
     }
+    holding = false;
     fill.fillers.forEach(([a, b], i) => box(`Fileur ${run.id}${i ? i + 1 : ""}`, "filler", band(a, b, D, D + FRONT, s.plinth, s.base)));
     // The run's corner units, along it: the worktop lies over them as over its units.
     const cornerUnits = (["left", "right"] as const).flatMap((side, i): [number, number][] => {
@@ -198,14 +208,14 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     const kick = kickOf(p, run.id);
     const held = fill.spaces.filter((pl) => pl.row === "base" && pl.item.furnished);
     // A rounded end unit stands on its own rounded socle; a fridge's surround on the floor, its sides down to it.
-    const surrounds = fill.placed.filter((pl) => applianceOf(pl.item)?.role === "fridge-surround").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
+    const surrounds = [...fill.placed, ...asUnits].filter((pl) => applianceOf(pl.item)?.role === "fridge-surround").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
     for (const [a, b] of fill.stretches.flatMap((st) => without(st, [...openRoom(fill, "base"), ...rounds.map((r) => r.span), ...surrounds]))) {
       const used = [...fill.placed, ...held].some((pl) => pl.row === "base" && pl.at >= a - 1e-6 && pl.at < b);
       if (used && kick.on) box(`Plinthe ${run.id}${kicks++ ? kicks : ""}`, "kick", band(a, b, D + FRONT - 16 - kick.back, D + FRONT - kick.back, 0, s.plinth - 3));
     }
     if (run.wall && !room && !p.noWalls) box(`Mur ${run.id}`, "wall", band(run.id === "A" && run.left !== "free" ? -WALL_THICKNESS : 0, run.length + (run.id === "A" && run.right !== "free" ? WALL_THICKNESS : 0), -WALL_THICKNESS, 0, 0, p.height));
   }
-  const base = Object.values(out.fills).flatMap((f) => f.placed.filter((pl) => pl.row === "base"));
+  const base = Object.values(out.fills).flatMap((f) => [...f.placed, ...heldUnits(f)].filter((pl) => pl.row === "base"));
   const role = (pl: Placed) => applianceOf(pl.item)?.role;
   if (base.some((pl) => role(pl) === "dishwasher")) checks.dishwasherBySink = !Object.values(out.fills).some((f) => f.problems.includes("Le lave-vaisselle n'est pas à côté de l'évier."));
   out.ergonomics = ergonomics(places, checks);
@@ -320,9 +330,11 @@ const NARROW = 50;
  * run) has none — nothing over the rest of a run beside a place kept free. The splashback follows it.
  */
 export function worktopSpans(run: KitchenRun, fill: RunFill, corners: [number, number][] = []): [number, number][] {
-  const held = fill.spaces.filter((pl) => pl.row === "base" && pl.item.furnished).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
+  // A column furnished by hand is a column still: no worktop over it.
+  const tall = new Set(heldUnits(fill).filter((pl) => pl.entry.kind === "tall").map((pl) => pl.item.id));
+  const held = fill.spaces.filter((pl) => pl.row === "base" && pl.item.furnished && !tall.has(pl.item.id)).map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
   const open = fill.free.flatMap((gap) => without(gap, held)).filter(([a, b]) => b - a >= NARROW);
-  const columns = fill.placed.filter((pl) => pl.row === "base" && pl.entry.kind === "tall").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
+  const columns = [...fill.placed, ...heldUnits(fill)].filter((pl) => pl.row === "base" && pl.entry.kind === "tall").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]);
   const units = [...fill.placed.filter((pl) => pl.row === "base" && pl.entry.kind !== "tall").map((pl): [number, number] => [pl.at, pl.at + pl.item.width]), ...held];
   const [z0, z1] = zoneSpan(run);
   // Against a column or open room, it stops at the caisson's side, not over the filler beside it; at the run's ends it goes on to the wall or the corner.
@@ -395,7 +407,7 @@ function endPanels(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, band: Ba
   for (const side of ["left", "right"] as const) {
     if (run[side] !== "free") continue;
     for (const row of ["base", "wall"] as const) {
-      const units = fill.placed.filter((pl) => pl.row === row && !isFiller(pl.item) && applianceOf(pl.item)?.role !== "hood");
+      const units = [...fill.placed, ...heldUnits(fill)].filter((pl) => pl.row === row && !isFiller(pl.item) && applianceOf(pl.item)?.role !== "hood");
       if (!units.length) continue;
       const last = units.reduce((a, b) => (side === "left" ? (b.at < a.at ? b : a) : (b.at + b.item.width > a.at + a.item.width ? b : a)));
       if (row === "base" && last.entry.kind !== "tall") continue;

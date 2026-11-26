@@ -2697,9 +2697,13 @@ opération existante.
   d'un côté, en plus de l'autre) ; les cotes des murs, la hauteur sous plafond, la matière des **façades** (seulement ce qui s'y prête : bois, mélaminé, MDF, HDF, stratifié, laque, verre — ni
   marbre, ni métal, ni fond, ni tasseau : `frontChoices`), les **façades de toute la cuisine**, dans leur carte « Façades » à part (avec la case **« Caissons en Répartition »** :
   chaque meuble posé, proposé ou refait devient aussitôt un caisson du dressing à sa place — étagères, cloisons, niches,
-  tiroirs s'y règlent comme au dressing, le plan lui garde sa place, le plan de travail et la plinthe le suivent ; un
-  meuble d'angle, l'habillage de réfrigérateur et la casquette restent des caissons simples : `asCaissons`,
-  `withCaissonsPlaced`) — pose (en applique ou
+  tiroirs s'y règlent comme au dressing, le plan lui garde sa place, le plan de travail et la plinthe le suivent. Il
+  garde tout ce que son meuble avait : évier, plaque, four et leurs découpes, et pour l'habillage de réfrigérateur ses
+  côtés et son réfrigérateur autour de son caisson (`heldUnits`) ; une colonne reste sans plan de travail. Posé sur la
+  plinthe, son dessous et son dessus vont d'un bout à l'autre et ses côtés tiennent entre eux : rien ne descend devant
+  la plinthe. Un meuble d'angle et la casquette restent des caissons simples. La même case est au-dessus des cartes
+  d'« Ajouter des meubles » ; « Vider le linéaire » enlève aussi les caissons de ses places (`withRoomsLeft`) :
+  `asCaissons`, `withCaissonsPlaced`) — pose (en applique ou
   encastrées), style (plate, à cadre, rainurée, à lattes, vitrée), poignées (avec, sur profil gorge, sans), couleur de
   laque (portes et façades de tiroirs seulement), épaisseur (10 à 40 mm) et jeu (0 à 6 mm) : `frontLook`,
   `app/kitchen/kitchen-front-fields.ts` ; le style ou les poignées donnés à un meuble seul dans la 3D passent avant —, la profondeur
@@ -3175,8 +3179,8 @@ opération existante.
     - Ses finitions (« Finitions » posées sur lui seul : joues, fileurs, bandeau, plinthe, pieds) le suivent, déplacées,
       tournées, allongées avec lui (`document/caisson-trims.ts`).
     - Un caisson aménagé avant cette version est relié à sa place à la prochaine cuisine refaite, s'il s'y trouve
-      encore. Un meuble d'angle ne s'aménage pas ainsi, ni le caisson d'un habillage de réfrigérateur (il resterait sans
-      ses côtés ni son réfrigérateur) : ses étagères et ses portes se changent avec Caisson et Façades, que l'habillage garde.
+      encore. Un meuble d'angle ne s'aménage pas ainsi. Le caisson d'un habillage de réfrigérateur, si : ses côtés et
+      son réfrigérateur restent autour de lui, comme l'évier, la plaque ou le four d'un meuble aménagé.
     - L'habillage de réfrigérateur agit comme un seul meuble : son caisson changé dans Caisson (hauteur, largeur,
       profondeur), ses côtés le suivent ; une de ses pièces déplacée (« Le corps entier »), sélectionnée entière ou
       supprimée, c'est tout l'habillage. Un outil qui enregistre à nouveau à la place de son dernier réglage est

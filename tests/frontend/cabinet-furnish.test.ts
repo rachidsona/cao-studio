@@ -37,6 +37,30 @@ function caissonBox(doc: CadDocument, sketchId: string): [number[], number[]] {
 }
 
 describe("caisson de cuisine aménagé", () => {
+  it("aménagé, il garde ce que son meuble avait : l'évier et sa découpe ; une colonne reste sans plan de travail ; rien devant la plinthe", () => {
+    const made = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "I", lengthA: 2400 });
+    const built = withKitchenBuilt(made.doc, made.id, { runs: { A: items(["app-sink", 1200], ["tall-colonne-garde-manger", 600]) } });
+    if (typeof built === "string") throw new Error(built);
+    let doc = built.doc;
+    for (const name of ["Évier", "Colonne garde-manger"]) {
+      const c = doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith(name))!;
+      const done = withCabinetFurnished(doc, c.id);
+      if (typeof done === "string") throw new Error(done);
+      doc = done.doc;
+    }
+    expect(doc.features.some((f) => f.type === "cabinet")).toBe(false);
+    expect(doc.features.filter((f) => f.type === "appliance").map((f) => f.name)).toEqual(expect.arrayContaining(["Évier", "Robinet"]));
+    expect(doc.features.some((f) => f.type === "machining" && f.name.startsWith("Découpes Plan de travail A"))).toBe(true);
+    // The worktop over the sink's caisson, up to the column's side only.
+    const top = doc.features.find((f) => f.type === "extrude" && f.name === "Plan de travail A")!;
+    const xs = (doc.features.find((x) => top.type === "extrude" && x.id === top.sketch) as SketchFeature).points.map((q) => q.x);
+    expect(Math.max(...xs)).toBeLessThanOrEqual(1200 + 1);
+    // On its plinth: no side of the caisson goes down in front of it.
+    const sink = doc.features.find((f) => f.type === "sketch" && f.name.startsWith("Caisson — Évier")) as SketchFeature;
+    const record = sink.offsets!.find(isPartition)!;
+    expect(record.step.kind === "partition" && record.step.input.outer).toBe("board");
+  });
+
   it("devient une Répartition à sa place, avec son fond, ses étagères et ses portes ; son linéaire lui garde sa place", () => {
     const { doc, plan } = kitchen();
     const cabinet = doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Bas 2 portes"))!;

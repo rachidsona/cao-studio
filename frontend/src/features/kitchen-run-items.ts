@@ -212,6 +212,20 @@ export interface Placed {
   at: number;
 }
 
+/**
+ * The caissons furnished by hand in the room kept for them, as the units they were (`from`, a model of the catalogue
+ * or an appliance's): the plan still makes what else that unit had (its sink, hob or oven and their cut-outs, a
+ * surround's sides and fridge), and keeps a column's room free of worktop — all but its caisson, which they are.
+ */
+export const heldUnits = (fill: Pick<RunFill, "spaces">): Placed[] =>
+  fill.spaces.flatMap((pl) => {
+    const model = pl.item.furnished ? pl.item.from : undefined;
+    if (!model || !(applianceOf({ model }) || CATALOG.some((e) => modelOf(e) === model))) return [];
+    const item = { ...pl.item, model };
+    const entry = itemEntry(item);
+    return entry.round ? [] : [{ ...pl, item, entry, row: rowOf(entry) }];
+  });
+
 /** A run filled: what stands where, the fillers of the base row, the room left open, what does not fit, and what to look at. */
 export interface RunFill {
   placed: Placed[];

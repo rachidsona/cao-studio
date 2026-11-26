@@ -46,3 +46,10 @@ export function depthChoice(redraw: () => void): HTMLElement {
   choice.addEventListener("change", () => ((depthFor = choice.value === "next" ? "next" : "model"), redraw()));
   return el("label", { class: "flex items-center gap-2 py-1.5 text-xs text-gray-600 dark:text-gray-300" }, "Profondeur tapée pour", choice);
 }
+
+/** « Caissons en Répartition », also over the cards: the plan's option (`asCaissons`), its units made caissons of the dressing. */
+export function caissonsChoice(on: boolean, set: (on: boolean) => void): HTMLElement {
+  const box = el("input", { type: "checkbox", checked: on, "data-run-as-caissons": "" });
+  box.addEventListener("change", () => set(box.checked));
+  return el("label", { class: "flex items-center gap-2 py-1.5 text-xs text-gray-600 dark:text-gray-300" }, box, "Caissons en Répartition (réglés comme au dressing)");
+}
