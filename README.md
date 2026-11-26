@@ -2713,6 +2713,8 @@ opération existante.
   accessoires à choisir), refait avec lui à toute largeur. De même un meuble à traverses sans étagère.
   **Un caisson aménagé supprimé dans la 3D** (ses panneaux, ou lui entier) refait la cuisine : ni plan de travail ni
   plinthe ne restent à sa place (`withDeletedFreed`).
+  Dans « Voir » un linéaire, un caisson aménagé a **sa propre cote** dans la chaîne du bas (ou du haut), comme un
+  meuble (`runDims`) ; choisi, il est **entouré en laiton** sur la bande.
   **Ses façades restent celles du meuble** : les façades de tiroirs en applique devant le caisson
   (`mount: "overlay"`), chacune à sa hauteur (`NicheFeature.shares`, comme `drawerShares` : deux tiroirs et un
   casserolier restent deux tiroirs et un casserolier), et les poignées percées sans être dessinées en volume, comme

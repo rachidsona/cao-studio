@@ -74,6 +74,9 @@ test("caisson de cuisine : isolé et aménagé par le clic droit, étagères pos
   await expect(tool.locator('[data-fold="space"]')).toContainText("260 cm libres en bas");
   // Chosen on the strip: isolated again from there, to be changed in the 3D.
   await tool.locator('[data-run-strip="A"] [data-held]').click();
+  // Chosen: outlined on the strip, in brass.
+  await expect(tool.locator('[data-run-strip="A"] [data-held-chosen]')).toHaveCount(1);
+  expect(await tool.locator('[data-run-strip="A"] [data-held-chosen]').evaluate((e) => getComputedStyle(e).stroke)).toBe("rgb(184, 151, 90)");
   await expect(tool.locator("[data-strip-actions]")).toContainText("Caisson aménagé 100 cm");
   await tool.locator("[data-strip-caisson-open]").click();
   await expect(page.locator("[data-zone-isolated]")).toContainText("Bas 2 portes 1000");

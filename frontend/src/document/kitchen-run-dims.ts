@@ -9,7 +9,7 @@
 import { cornerSide, wallCornerSide } from "./kitchen-corners";
 import { CORNER_WALL_GAP, jointOf, kitchenSizes, wallCorner, type Joint, type KitchenRun, type RunGeometry } from "./kitchen-plan-shapes";
 import type { KitchenFloorPlan } from "./types";
-import type { RunFill } from "../features/kitchen-run-items";
+import { openRoom, type RunFill } from "../features/kitchen-run-items";
 
 /** What typing a dimension changes: a unit's width; a corner's size (the value less `less`); a size of the plan. */
 export type DimEdit =
@@ -52,8 +52,10 @@ export function runDims(p: KitchenFloorPlan, run: KitchenRun, g: RunGeometry, fi
   const out: RunDim[] = [];
   const unit = (row: "base" | "wall") => fill.placed.filter((pl) => pl.row === row).map((pl): Piece => ({ span: [pl.at, pl.at + pl.item.width], edit: { kind: "item", item: pl.item.id } }));
   const plain = (spans: [number, number][]) => spans.map((span): Piece => ({ span }));
-  const low: Piece[] = [...unit("base"), ...plain(fill.fillers), ...plain(fill.free)];
-  const high: Piece[] = [...unit("wall"), ...plain(fill.wallFree)];
+  // A caisson furnished in a room kept for it is a unit of the run: its own width, not a part of the room left open.
+  const held = (row: "base" | "wall") => fill.spaces.filter((pl) => pl.row === row && pl.item.furnished).map((pl): Piece => ({ span: [pl.at, pl.at + pl.item.width], edit: { kind: "item", item: pl.item.id } }));
+  const low: Piece[] = [...unit("base"), ...held("base"), ...plain(fill.fillers), ...plain(openRoom(fill, "base"))];
+  const high: Piece[] = [...unit("wall"), ...held("wall"), ...plain(openRoom(fill, "wall"))];
   (["left", "right"] as const).forEach((side, i) => {
     const joint = jointOf(run, side);
     const pass = run[side] === "pass";
