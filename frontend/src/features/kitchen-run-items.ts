@@ -15,7 +15,7 @@ import { freeStretches } from "./room-runs";
 /** The widths a unit is sold in (mm). */
 export const WIDTHS = [300, 400, 450, 500, 600, 800, 900, 1000, 1200];
 
-export type Role = "sink" | "dishwasher" | "hob" | "hob-oven" | "oven" | "fridge" | "oven-column" | "hood" | "microwave" | "fridge-surround";
+export type Role = "sink" | "dishwasher" | "washer" | "hob" | "hob-oven" | "oven" | "fridge" | "oven-column" | "hood" | "microwave" | "fridge-surround";
 
 /** A freestanding fridge's surround (« Habillage réfrigérateur »): its usual height and depth, its top caisson's height, the air over the fridge and on its sides (mm). */
 export const SURROUND = { height: 2300, caisson: 400, air: 30, side: 10, least: 200, lowest: 1200, fridge: 1870 };
@@ -26,13 +26,15 @@ export interface ApplianceModel {
   name: string;
   kind: UnitKind;
   widths: number[];
-  /** Its cabinet (none: the appliance alone, a dishwasher, a hood). */
+  /** Its cabinet (none: the appliance alone, a dishwasher, a hood; nothing at all for the washing machine's place). */
   cabinet: Pick<CatalogEntry, "layout" | "drawers" | "shelves" | "top"> | null;
 }
 
 export const APPLIANCES: ApplianceModel[] = [
   { model: "app-sink", role: "sink", name: "Évier", kind: "base", widths: [600, 800, 1200], cabinet: { layout: "doors", shelves: 0, top: "rails" } },
   { model: "app-dishwasher", role: "dishwasher", name: "Lave-vaisselle", kind: "base", widths: [450, 600], cabinet: null },
+  // Room kept empty between the units for a washing machine (60 cm and its play): under the worktop, nothing made, no plinth.
+  { model: "app-washer", role: "washer", name: "Place lave-linge", kind: "base", widths: [610], cabinet: null },
   { model: "app-hob", role: "hob", name: "Plaque de cuisson", kind: "base", widths: [600, 800, 900], cabinet: { layout: "drawers", drawers: 2, shelves: 0 } },
   { model: "app-hob-oven", role: "hob-oven", name: "Plaque et four", kind: "base", widths: [600], cabinet: { layout: "none", shelves: 0 } },
   { model: "app-oven", role: "oven", name: "Four sous plan", kind: "base", widths: [600], cabinet: { layout: "none", shelves: 0 } },

@@ -129,7 +129,7 @@ function elevation(p: KitchenFloorPlan, run: KitchenRun, units: { pl: Placed; n:
     const z = pl.row === "wall" ? (applianceOf(pl.item)?.role === "hood" ? p.worktopHeight + 650 : s.wallTop - h) : 0;
     const [x, y] = at(pl.at, z + h);
     out.push(rect(x, y, pl.item.width * k, h * k, "#ffffff", INK, 0.3));
-    if (pl.row === "base" && pl.entry.plinth !== 0 && applianceOf(pl.item)?.role !== "dishwasher") out.push(line(at(pl.at, s.plinth), at(pl.at + pl.item.width, s.plinth), GREY, 0.2));
+    if (pl.row === "base" && pl.entry.plinth !== 0 && !["dishwasher", "washer"].includes(applianceOf(pl.item)?.role ?? "")) out.push(line(at(pl.at, s.plinth), at(pl.at + pl.item.width, s.plinth), GREY, 0.2));
     out.push(text(x + (pl.item.width * k) / 2, y + Math.min(h * k / 2, 6) + 1, String(n), 3, ' text-anchor="middle" font-weight="bold"'));
     if (pl.row === "base") chain.push([pl.at, pl.at + pl.item.width]);
   }

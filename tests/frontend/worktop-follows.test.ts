@@ -40,6 +40,12 @@ describe("plan de travail qui suit les meubles", () => {
     expect(spans(gap, "kick")).toEqual([["Plinthe A", 0, 1000], ["Plinthe A2", 1600, 2200]]);
     // A dishwasher has no cabinet, but the worktop covers it; a column stops it.
     expect(spans(plan([["base-bas-2-portes", 1000], ["app-dishwasher", 600], ["base-bas-1-porte", 600]]), "worktop")).toEqual([["Plan de travail A", 0, 2200]]);
+    // The washing machine's place, 61 cm kept empty between the units: the worktop over it, no plinth before it, nothing made in it.
+    const washer = plan([["base-bas-2-portes", 1000], ["app-washer", 610], ["base-bas-1-porte", 600]]);
+    expect(spans(washer, "worktop")).toEqual([["Plan de travail A", 0, 2210]]);
+    expect(spans(washer, "kick")).toEqual([["Plinthe A", 0, 1000], ["Plinthe A2", 1610, 2210]]);
+    expect(kitchenFromPlan(washer).units.map((u) => u.width)).toEqual([1000, 600]);
+    expect(kitchenFromPlan(washer).boxes.filter((b) => b.kind === "appliance" || b.kind === "panel")).toEqual([]);
     expect(spans(plan([["base-bas-2-portes", 1000], ["tall-colonne-rangement", 600], ["base-bas-1-porte", 600]]), "worktop")).toEqual([["Plan de travail A", 0, 1000], ["Plan de travail A2", 1600, 2200]]);
   });
 

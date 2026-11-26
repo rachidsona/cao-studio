@@ -2861,6 +2861,8 @@ opération existante.
     (dessinée avec les dessins du catalogue) sur deux rangées : en bas les meubles bas et les colonnes, en haut les
     meubles hauts, la hotte et le micro-ondes. On y ajoute un meuble du catalogue (largeurs du commerce de 300 à 1200),
     de « Mes meubles » ou un **appareil** — évier, plaque de cuisson, plaque et four, four sous plan, lave-vaisselle,
+    **place lave-linge** (`app-washer` : 61 cm gardés vides entre les caissons, le plan de travail dessus, ni caisson
+    ni façade ni plinthe, en pointillé sur la bande et sur sa carte ; sa largeur se change dans « Meuble choisi »),
     colonne réfrigérateur, colonne four, hotte, micro-ondes, **habillage de réfrigérateur américain** (aussi dans
     l'onglet Colonnes : deux côtés toute hauteur dans la matière des façades, un caisson à portes de 40 cm en haut, le
     réfrigérateur posable entre eux avec 1 cm d'air de chaque côté et 3 cm au-dessus ; de 70 à 120 cm de large, 96,8 cm

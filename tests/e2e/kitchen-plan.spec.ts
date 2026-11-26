@@ -990,3 +990,36 @@ test("linéaire : « Sans portes » montre l'intérieur des meubles sur la bande
   await expect(trays).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test("linéaire : « Place lave-linge » garde 61 cm vides entre deux caissons, sous le plan de travail", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-plan-cuisine-lave-linge");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  await unfold(tool, "add");
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  await tool.getByRole("tab", { name: "Électro." }).click();
+  // Its card: the place drawn dashed, at 61 cm.
+  await expect(tool.locator('[data-fold-section="add"] [data-washer-place]')).toHaveCount(1);
+  await tool.locator('[data-add="app-washer-610"]').click();
+  await tool.getByRole("tab", { name: "Bas" }).click();
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  const strip = tool.locator('[data-run-strip="A"]');
+  await expect(strip.locator("[data-item]")).toHaveCount(3);
+  await expect(strip.locator("[data-washer-place]")).toHaveCount(1);
+  // In the 3D: the two caissons, one worktop over the three, a plinth under each caisson only.
+  const names = async () => (await tree(page)).split("\n");
+  await expect.poll(async () => (await names()).filter((l) => /^Bas 1 porte 600/.test(l)).length).toBe(2);
+  expect((await names()).filter((l) => /^Plan de travail A/.test(l))).toHaveLength(1);
+  expect((await names()).filter((l) => /^Plinthe A/.test(l))).toHaveLength(2);
+  // Chosen on the strip: its name and its width.
+  await strip.locator("[data-item]").nth(1).click();
+  await expect(tool.locator('[data-fold="chosen"]')).toContainText(/Place lave-linge · 61/);
+  await shot(page, "24-place-lave-linge");
+  expect(errors).toEqual([]);
+});

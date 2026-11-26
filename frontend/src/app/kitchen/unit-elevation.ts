@@ -98,6 +98,8 @@ function oven(x0: number, x1: number, top: number): string {
 export function elevationBody(e: CatalogEntry, open = false): { body: string; width: number; height: number; above: number } {
   const kind = KINDS[e.kind];
   const [W, H, plinth] = [e.width, e.height ?? kind.height, e.plinth ?? kind.plinth];
+  // The washing machine's place: nothing is made there, its outline only, dashed.
+  if (e.id.startsWith("app-washer-")) return { body: `<rect x="0" y="0" width="${W}" height="${H}" class="fill-transparent stroke-gray-400" stroke-dasharray="6 4" vector-effect="non-scaling-stroke" data-washer-place=""/>`, width: W, height: H, above: 0 };
   const carcass = H - plinth;
   const [x0, x1, top, bottom] = [GAP, W - GAP, GAP, carcass - GAP];
   let inside: string;
@@ -123,6 +125,7 @@ export function elevation(e: CatalogEntry): string {
 
 /** What it is, in a few words. */
 export function unitSummary(e: CatalogEntry): string {
+  if (e.id.startsWith("app-washer-")) return "Place vide sous le plan";
   // One of « Mes caissons »: its inside as it was kept.
   if (e.caisson) return ["Caisson aménagé", e.caisson.doors ? "portes" : "", e.caisson.cases.some((c) => c.equipment.some((q) => q.feature.fill === "drawers")) ? "tiroirs" : ""].filter(Boolean).join(" · ");
   const shelves = e.top === "rails" ? "2 traverses" : e.shelves ? `${e.shelves} étagère${e.shelves > 1 ? "s" : ""}` : "";
