@@ -11,6 +11,7 @@ import { SPACE } from "../../features/kitchen-run-items";
 import { withCaissonsPlaced } from "../../document/cabinet-furnish";
 import * as THREE from "three";
 import { kitchenPlanIn, kitchenPlanOf, kitchenRunOf, kitchenStarted, runsLost, withKitchenBuilt, withKitchenChanged, withKitchenPlan } from "../../document/kitchen-floor";
+import { pieceItemOf } from "../../document/kitchen-plan-add";
 import { kitchenFromPlan } from "../../document/kitchen-plan-build";
 import { kitchenMarks, kitchenRoomInfo, linkedKitchen, unlinkedKitchen } from "../../document/kitchen-plan-room";
 import { planOnRoom } from "../../document/kitchen-room-fix";
@@ -476,21 +477,20 @@ export function bindKitchenPlan(root: HTMLElement, viewport: Viewport, editor: E
     if (editor.sketches.active || viewport.inSketch) return;
     const sketch = sketchId ? findFeature(editor.doc, sketchId) : undefined;
     if (sketch?.type === "sketch" && sketch.kitchenPlan) return tool?.chosen === sketch.id && !tool.busy ? showPanel(tool.panel) : tool?.busy ? undefined : open(sketch.id);
-    const owner = bodyId ? kitchenRunOf(editor.doc, featureOfBody(bodyOrigin(editor.doc, bodyId))) : null;
-    if (!owner || (tool?.busy && tool.busy !== owner.run)) return;
-    if (tool?.busy === owner.run) return showPanel(tool.panel);
+    const piece = bodyId ? featureOfBody(bodyOrigin(editor.doc, bodyId)) : "", owner: { plan: string; run: string; item?: string } | null = piece ? (pieceItemOf(editor.doc, piece) ?? kitchenRunOf(editor.doc, piece)) : null;
+    if (!owner || tool?.busy) return owner && tool?.busy === owner.run ? showPanel(tool.panel) : undefined;
     const plan = kitchenPlanIn(editor.doc, owner.plan);
     const run = plan && kitchenRuns(plan).find((r) => r.id === owner.run);
     if (!run) return;
-    if (tool && (tool.chosen ?? kitchenPlanOf(editor.doc)?.id) === owner.plan) tool.openRun(owner.plan, run);
-    else open(owner.plan, false, owner.run);
+    if (!tool || (tool.chosen ?? kitchenPlanOf(editor.doc)?.id) !== owner.plan) open(owner.plan, false, owner.run);
+    tool?.openRun(owner.plan, run, true, owner.item ?? null, owner.item ? "chosen" : null);
   };
   root.querySelector('[data-workshop="kitchen-plan"]')?.addEventListener("click", () => open());
   root.addEventListener("cad:feature-selected", (event) => show((event as CustomEvent<string | null>).detail ?? undefined, undefined));
   const selected = viewport.onSelectionChange;
   viewport.onSelectionChange = (selection) => {
     selected(selection);
-    show(selection.sketches[0] ?? selection.sketch[0]?.sketchId, selection.bodies[0] ?? selection.faces[0]?.bodyId);
+    show(selection.sketches[0] ?? selection.sketch[0]?.sketchId, selection.bodies[0] ?? selection.faces[0]?.bodyId ?? selection.edges[0]?.bodyId);
   };
   editor.afterRender(() => {
     paintDims();

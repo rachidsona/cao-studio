@@ -1,8 +1,8 @@
 /**
  * « Sélectionner … entier », au clic droit sur n'importe quelle pièce d'un élément (une porte, un côté, une étagère, le
  * dessus, le dessous…) : tout l'élément dont elle est — un caisson avec ses façades, une Répartition avec ses panneaux,
- * un appareil d'électroménager (une pièce du réfrigérateur : le réfrigérateur seul) ; une pièce seule dans son élément
- * (un côté de l'habillage) prend ce dont elle fait partie (tout l'habillage, comme Coller par face : `glueKey`).
+ * un appareil d'électroménager (une pièce du réfrigérateur : le réfrigérateur seul) ; le caisson ou un côté d'un
+ * habillage de réfrigérateur, tout l'habillage, un seul meuble (comme Coller par face : `glueKey`).
  */
 import { bodyLabel, findFeature } from "../document/operations";
 import type { CadDocument } from "../document/types";
@@ -21,9 +21,11 @@ export function wholeSelection(doc: CadDocument, displayed: readonly string[], b
     const k = key(bodyId);
     return { k, bodies: displayed.filter((id) => key(id) === k) };
   };
-  // Its own element first (a cabinet with its fronts, a Répartition, an appliance), else the unit it is a piece of.
+  // Its own element first (a cabinet with its fronts, a Répartition, an appliance), else the unit it is a piece of; the
+  // caisson of a unit made of several (a surround's) is that whole unit: its sides and its fridge with it.
   const near = own((id) => alignWhole(doc, id)?.kind === "sketch" ? alignWhole(doc, id)!.id : elementKey(doc, id));
-  const { k, bodies } = near.bodies.length > 1 ? near : own((id) => glueKey(doc, id));
+  const unit = own((id) => glueKey(doc, id));
+  const { k, bodies } = near.bodies.length > 1 && near.k !== unit.k ? near : unit;
   if (bodies.length < 2) return null;
   return { name: findFeature(doc, k)?.name ?? bodyLabel(doc, bodyId), bodies };
 }

@@ -355,3 +355,72 @@ test("plan de cuisine : « Caissons en Répartition », la cuisine proposée fai
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/caissons-repartition.png` });
   expect(errors).toEqual([]);
 });
+
+test("plan de cuisine : l'habillage est un seul meuble — la hauteur de son caisson changée dans Caisson, ses côtés la suivent", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const api = await newProject(page, "zz-test-habillage-un-meuble");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-ribbon-tab="kitchen"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  const add = tool.locator('[data-fold="add"]');
+  if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+  await tool.getByRole("tab", { name: "Colonnes" }).click();
+  await tool.locator('[data-add="app-fridge-surround-968"]').click();
+  await tool.locator("[data-run-close]").click();
+  await expect(page.locator('[title^="Côté gauche habillage"]').first()).toBeAttached({ timeout: 60_000 });
+  // Its caisson opened in the Caisson tool, from the history, 30 cm high.
+  const ops = page.getByRole("toolbar", { name: "Historique des opérations" });
+  const cabinetOp = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>("[data-op]")].map((b) => b.dataset.op!).find((id) => id.startsWith("cb")));
+  await ops.locator(`[data-op="${cabinetOp}"]`).click();
+  await page.getByRole("dialog", { name: /Habillage réfrigérateur/ }).getByRole("button", { name: "Modifier", exact: true }).click();
+  const caisson = page.getByRole("dialog", { name: "Caisson", exact: true });
+  const height = caisson.getByLabel(/^Hauteur/).first();
+  const unit = (await height.getAttribute("aria-label"))?.match(/\((\w+)\)/)?.[1];
+  await height.fill(unit === "mm" ? "300" : unit === "m" ? "0,3" : "30");
+  await height.press("Enter");
+  await page.waitForTimeout(1500);
+  await caisson.getByRole("button", { name: "Fermer", exact: true }).click();
+  // The sides end where the caisson now ends: 1870 + 30 + 300.
+  await expect.poll(async () => {
+    const doc = (await page.evaluate(async (url) => (await (await fetch(url, { headers: { Accept: "application/json" } })).json()).document, api)) as { features: { name: string; distance?: number }[] };
+    return doc.features.find((f) => f.name.startsWith("Côté gauche habillage"))?.distance;
+  }, { timeout: 30_000 }).toBe(2200);
+  expect(errors).toEqual([]);
+});
+
+test("plan de cuisine : un meuble cliqué dans la 3D s'ouvre sous « Meuble choisi » de son linéaire", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-clic-meuble-choisi");
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-ribbon-tab="kitchen"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-workshop="kitchen-plan"]')?.click());
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  // A wall hardly wider than the surround: seen from the front, it is in the middle of the view.
+  await openCard(tool, "Cotes");
+  const length = tool.getByLabel(/^Longueur mur A/);
+  const cm = (await length.getAttribute("aria-label"))?.match(/\((\w+)\)/)?.[1];
+  await length.fill(cm === "mm" ? "1100" : cm === "m" ? "1,1" : "110");
+  await length.press("Enter");
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  const add = tool.locator('[data-fold="add"]');
+  if ((await add.getAttribute("aria-expanded")) !== "true") await add.evaluate((b) => (b as HTMLElement).click());
+  // (The strip of so short a wall stands over the panel: clicked through.)
+  await tool.getByRole("tab", { name: "Colonnes" }).evaluate((b) => (b as HTMLElement).click());
+  await tool.locator('[data-add="app-fridge-surround-968"]').evaluate((b) => (b as HTMLElement).click());
+  await tool.locator("[data-run-close]").click();
+  await expect(page.locator('[title^="Côté gauche habillage"]').first()).toBeAttached({ timeout: 60_000 });
+  await page.evaluate(() => document.querySelector<HTMLElement>('[data-action="view"][data-view="front"]')?.click());
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(1000);
+  // A click on the surround, seen from the front: its run opens, it chosen there.
+  const view = (await page.locator("canvas").first().boundingBox())!;
+  await page.mouse.click(view.x + view.width * 0.47, view.y + view.height * 0.4);
+  await expect(tool.locator('[data-fold="chosen"]')).toContainText(/Meuble choisi : Habillage/, { timeout: 15_000 });
+  expect(errors).toEqual([]);
+});

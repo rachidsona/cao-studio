@@ -98,7 +98,10 @@ export function withCabinetFurnished(doc: CadDocument, cabinetId: string, spec?:
   const next = freed?.doc ?? deleteFeatures(doc, [c.id, ...fronts.map((f) => f.id)]).next;
   const placed = withCaissonPlaced(next, made, { frame: panelsFrame(c, made.depth), width: c.width, height: c.height, name: `Caisson — ${spec ? c.name.replace(/\s*\([A-Z]\d+\)$/, "") : c.name}` });
   if (typeof placed === "string") return placed;
-  return { doc: freed ? withRoomLinked(placed.doc, freed, placed.sketch) : placed.doc, sketch: placed.sketch, notes };
+  if (!freed) return { doc: placed.doc, sketch: placed.sketch, notes };
+  // Its room now held by it: the kitchen made again, its worktop and plinth over and under it as over a unit.
+  const linked = withRoomLinked(placed.doc, freed, placed.sketch), rebuilt = withKitchenBuilt(linked, freed.plan, {});
+  return { doc: typeof rebuilt === "string" ? linked : rebuilt.doc, sketch: placed.sketch, notes };
 }
 
 /**

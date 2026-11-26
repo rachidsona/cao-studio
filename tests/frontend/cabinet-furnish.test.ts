@@ -6,6 +6,7 @@ import { withPlan, withZonePartition } from "../../frontend/src/document/plan-la
 import { PLAN, planZones } from "../../frontend/src/document/plan-shapes";
 import { cabinetBox } from "../../frontend/src/document/kitchen-catalog";
 import { kitchenPlanIn, kitchenRunOf, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
+import { pieceItemOf } from "../../frontend/src/document/kitchen-plan-add";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
 import { createReferencePlate, PART_SEPARATOR, type CabinetFeature, type CadDocument, type KitchenRunItem, type NicheFeature, type SketchFeature, type TrimFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
@@ -50,6 +51,17 @@ describe("caisson de cuisine aménagé", () => {
     expect(runs[0]).toMatchObject({ model: "space", width: 800 });
     expect(runs.slice(1).map((i) => i.model)).toEqual(["base-bas-3-tiroirs", "wall-haut-1-porte"]);
     expect(kitchenRunOf(made.doc, made.sketch)).toBeNull();
+    // Its worktop and its plinth still over and under it, as over the unit it was.
+    const span = (d: CadDocument, name: string) => {
+      const f = d.features.find((x) => x.type === "extrude" && x.name === name)!;
+      const xs = (d.features.find((x) => f.type === "extrude" && x.id === f.sketch) as SketchFeature).points.map((q) => q.x);
+      return [Math.min(...xs), Math.max(...xs)];
+    };
+    expect(span(made.doc, "Plan de travail A")).toEqual(span(doc, "Plan de travail A"));
+    expect(span(made.doc, "Plinthe A")).toEqual(span(doc, "Plinthe A"));
+    // A piece of it clicked in the 3D: the room the plan keeps for it, chosen there.
+    const piece = made.doc.features.find((f) => f.type === "extrude" && f.sketch === made.sketch)!;
+    expect(pieceItemOf(made.doc, piece.id)).toEqual({ plan, run: "A", item: runs[0]!.id });
     // Its box: the cabinet's, to the tenth of a millimetre (the back included).
     const [lo, hi] = caissonBox(made.doc, made.sketch);
     const back = cabinet.backThickness;

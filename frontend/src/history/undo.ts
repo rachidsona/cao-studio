@@ -31,6 +31,12 @@ export class UndoStack {
     return JSON.parse(next) as CadDocument;
   }
 
+  /** The state before the last step (what a step set again in place is compared with). */
+  get last(): CadDocument | undefined {
+    const previous = this.past.at(-1);
+    return previous === undefined ? undefined : (JSON.parse(previous) as CadDocument);
+  }
+
   get canUndo(): boolean {
     return this.past.length > 0;
   }

@@ -64,11 +64,37 @@ function unitCabinet(doc: CadDocument, featureId: string): string | null {
   const owner = kitchenRunOf(doc, featureId);
   const f = findFeature(doc, featureId);
   if (!owner || !f || f.type === "cabinet" || f.type === "fronts") return null;
-  const plan = kitchenPlanIn(doc, owner.plan);
-  if (!plan) return null;
-  const items = [...new Set(kitchenFromPlan(plan, kitchenRoomInfo(doc, plan)).boxes.filter((b) => b.run === owner.run && b.name === f.name).map((b) => b.item))];
-  const item = items.length === 1 ? items[0] : undefined;
+  const item = namedItem(doc, owner, f.name);
   return item ? (runCabinets(doc, owner.plan, owner.run).find((c) => c.item === item)?.cabinet ?? null) : null;
+}
+
+/** The item of the run whose unit lays out a piece of this name: one only, or none. */
+function namedItem(doc: CadDocument, owner: { plan: string; run: string }, name: string): string | undefined {
+  const plan = kitchenPlanIn(doc, owner.plan);
+  const items = plan ? [...new Set(kitchenFromPlan(plan, kitchenRoomInfo(doc, plan)).boxes.filter((b) => b.run === owner.run && b.name === name).map((b) => b.item))] : [];
+  return items.length === 1 ? items[0] : undefined;
+}
+
+/**
+ * The unit of a plan's run a piece of the 3D stands for — its caisson, its fronts, another of its pieces (a surround's
+ * side, an appliance), a caisson furnished in its room —: its plan, run and item; null for anything else (a worktop…).
+ */
+export function pieceItemOf(doc: CadDocument, featureId: string): PlanItem | null {
+  const f = findFeature(doc, featureId);
+  const sketch = f?.type === "sketch" ? f.id : f && "sketch" in f && typeof f.sketch === "string" ? f.sketch : undefined;
+  for (const p of sketch ? doc.features : []) {
+    const runs = p.type === "sketch" && p.kitchenPlan ? kitchenPlanIn(doc, p.id)?.runs : undefined;
+    for (const [run, items] of Object.entries(runs ?? {})) {
+      const held = items.find((i) => i.furnished === sketch);
+      if (held) return { plan: p.id, run, item: held.id };
+    }
+  }
+  const owner = kitchenRunOf(doc, featureId);
+  if (!owner || !f) return null;
+  const cabinet = f.type === "cabinet" ? f.id : f.type === "fronts" ? f.cabinet : planUnitCabinet(doc, featureId);
+  if (cabinet) return planItemOf(doc, cabinet);
+  const item = namedItem(doc, owner, f.name);
+  return item ? { ...owner, item } : null;
 }
 
 export interface PlanAdd {

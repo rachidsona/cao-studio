@@ -88,6 +88,35 @@ describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
     expect(sideNow(side.name)).toBeDefined();
   });
 
+  it("un seul meuble : son caisson changé dans la 3D, l'habillage le suit ; une de ses pièces supprimée, tout l'habillage part", async () => {
+    const { syncKitchenPlans } = await import("../../frontend/src/document/kitchen-sync");
+    const { withDeletedFreed } = await import("../../frontend/src/document/kitchen-delete-sync");
+    const { deleteFeatures } = await import("../../frontend/src/document/operations");
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: { A: [newItem([], "app-fridge-surround", 968)] }, made: {} });
+    const built = withKitchenBuilt(base.doc, base.id, {});
+    if (typeof built === "string") throw new Error(built);
+    const doc = built.doc;
+    const cab = doc.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
+    // Its caisson 35 cm high (it was 40): the sides end where it ends; wider by 10 cm: the surround too.
+    const synced = syncKitchenPlans(doc, { ...doc, features: doc.features.map((f) => (f.id === cab.id ? { ...cab, height: 350, width: cab.width + 100 } : f)) });
+    const item = kitchenPlanIn(synced, base.id)!.runs!.A![0]!;
+    expect([item.height, item.width]).toEqual([2250, 1068]);
+    const side = synced.features.find((f) => f.type === "extrude" && f.name.startsWith("Côté gauche habillage"))!;
+    expect(side.type === "extrude" && side.distance).toBe(2250);
+    // Moved whole (Déplacer, « Le corps entier »): a side takes the surround, by its caisson.
+    const { wholeOwner } = await import("../../frontend/src/app/move-whole");
+    const sideNow = doc.features.find((f) => f.type === "extrude" && f.name.startsWith("Côté droit habillage"))!;
+    expect(wholeOwner(doc, sideNow.id)).toEqual({ kind: "cabinet", id: cab.id });
+    // Clicked in the 3D: its unit, chosen in the plan (« Meuble choisi »).
+    const { pieceItemOf } = await import("../../frontend/src/document/kitchen-plan-add");
+    expect(pieceItemOf(doc, sideNow.id)).toEqual({ plan: base.id, run: "A", item: kitchenPlanIn(doc, base.id)!.runs!.A![0]!.id });
+    // A side deleted: the surround goes whole, its room kept free.
+    const left = doc.features.find((f) => f.type === "extrude" && f.name.startsWith("Côté gauche habillage"))!;
+    const gone = withDeletedFreed(doc, deleteFeatures(doc, [left.id]).next);
+    expect(kitchenPlanIn(gone, base.id)!.runs!.A!.map((i) => i.model)).toEqual(["space"]);
+    expect(gone.features.some((f) => f.name.startsWith("Côté droit habillage") || (f.type === "appliance" && f.model === "fridge-american") || f.type === "cabinet")).toBe(false);
+  });
+
   it("son caisson ne s'aménage pas à la main (il reste celui de l'habillage) : l'habillage ne disparaît pas", async () => {
     const { withCabinetFurnished } = await import("../../frontend/src/document/cabinet-furnish");
     const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, runs: { A: [newItem([], "app-fridge-surround", 968)] }, made: {} });

@@ -42,7 +42,7 @@ describe("sélectionner l'élément entier", () => {
     expect(whole.bodies.some((b) => doc.features.find((f) => f.id === b.split("#")[0])?.type === "cabinet")).toBe(true);
   });
 
-  it("la pièce cliquée est suivie : une pièce du réfrigérateur sélectionne le réfrigérateur seul, une porte du caisson le caisson seul", () => {
+  it("la pièce cliquée est suivie : une pièce du réfrigérateur sélectionne le réfrigérateur seul, une porte du caisson de l'habillage tout l'habillage", () => {
     const doc = kitchen();
     const cab = doc.features.find((f) => f.type === "cabinet" && f.name.startsWith("Habillage"))!;
     const fronts = doc.features.find((f) => f.type === "fronts" && f.cabinet === cab.id)!;
@@ -51,9 +51,11 @@ describe("sélectionner l'élément entier", () => {
     const parts = [`${fridge.id}${PART_SEPARATOR}0`, `${fridge.id}${PART_SEPARATOR}1`];
     const all = [...bodies(doc).filter((b) => b !== fridge.id), ...parts];
     expect(wholeSelection(doc, all, parts[1]!)).toEqual({ name: "Réfrigérateur américain", bodies: parts });
+    // The door of its caisson: the whole surround, one piece of furniture — its sides and its fridge with it.
     const door = wholeSelection(doc, all, `${fronts.id}${PART_SEPARATOR}0`)!;
     expect(door.name).toBe(cab.name);
-    expect(door.bodies.every((b) => b.startsWith(`${cab.id}#`) || b.startsWith(`${fronts.id}#`))).toBe(true);
+    expect(door.bodies).toEqual(expect.arrayContaining([...parts, `${cab.id}${PART_SEPARATOR}0`]));
+    expect(door.bodies.some((b) => doc.features.find((f) => f.id === b)?.name.startsWith("Côté gauche habillage"))).toBe(true);
   });
 
   it("une pièce seule (le plan de travail) : rien à prendre de plus", () => {

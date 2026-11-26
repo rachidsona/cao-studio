@@ -2904,7 +2904,8 @@ opération existante.
     - Sous la bande, **chaque titre se plie** (`ui/fold.ts`) : Place libre, Meuble choisi, Ajouter des meubles, Les
       angles, À revoir, Prix du projet. Tous sont fermés au départ ; un clic ouvre, un autre ferme, et ouvrir un titre
       ferme les autres ; choisir un meuble sur la bande ouvre ses réglages, et le titre ouvert le reste quand la
-      cuisine est refaite. La vue des linéaires plie de même Ergonomie, À revoir et Prix du projet (avec « Ouvrir le
+      cuisine est refaite. Un meuble cliqué dans la 3D (son caisson, une porte, un côté d'habillage, un caisson
+      aménagé) ouvre son linéaire, lui choisi sous « Meuble choisi » (`document/kitchen-plan-add.ts`, `pieceItemOf`). La vue des linéaires plie de même Ergonomie, À revoir et Prix du projet (avec « Ouvrir le
       devis »).
     - **Façades et intérieur** du meuble choisi (`app/kitchen/kitchen-unit-inside.ts`) : sans quitter le plan, ses
       **façades** (ouvert, une porte, deux portes, tiroirs), l'**ouverture** d'une porte (gauche, droite, relevante,
@@ -3169,12 +3170,17 @@ opération existante.
       cuisine refaite ne le refait plus, mais il suit cette place. Un meuble ajouté avant lui, un voisin élargi, le
       reste du mur envoyé de l'autre côté ou le plan tourné le déplacent avec elle. Cette place élargie ou rétrécie
       (sa largeur dans la calculatrice), sa Répartition prend la nouvelle largeur sur place : son intérieur s'adapte et
-      chaque pièce garde sa matière (`document/caisson-follow.ts`).
+      chaque pièce garde sa matière (`document/caisson-follow.ts`). La cuisine est refaite une fois sa place reliée à
+      lui : le plan de travail et la plinthe passent au-dessus et au-dessous comme sur le meuble qu'il était.
     - Ses finitions (« Finitions » posées sur lui seul : joues, fileurs, bandeau, plinthe, pieds) le suivent, déplacées,
       tournées, allongées avec lui (`document/caisson-trims.ts`).
     - Un caisson aménagé avant cette version est relié à sa place à la prochaine cuisine refaite, s'il s'y trouve
       encore. Un meuble d'angle ne s'aménage pas ainsi, ni le caisson d'un habillage de réfrigérateur (il resterait sans
       ses côtés ni son réfrigérateur) : ses étagères et ses portes se changent avec Caisson et Façades, que l'habillage garde.
+    - L'habillage de réfrigérateur agit comme un seul meuble : son caisson changé dans Caisson (hauteur, largeur,
+      profondeur), ses côtés le suivent ; une de ses pièces déplacée (« Le corps entier »), sélectionnée entière ou
+      supprimée, c'est tout l'habillage. Un outil qui enregistre à nouveau à la place de son dernier réglage est
+      comparé au document d'avant ce réglage, pour que le plan suive chaque fois (`app/editor.ts`, `history/undo.ts`).
     - Un caisson du dressing s'isole aussi, par « Isoler « … » » dans le menu de sa niche
       (`document/cabinet-furnish.ts`, `app/cabinet-furnish.ts`).
   - **Mes caissons** : un caisson aménagé se garde pour tous les projets, avec son intérieur.

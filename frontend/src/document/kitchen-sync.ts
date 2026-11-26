@@ -12,7 +12,7 @@ import { kitchenPlanIn, withKitchenBuilt } from "./kitchen-floor";
 import { kitchenFromPlan } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
 import { islandMoved, itemsMoved, unitsMoved } from "./kitchen-moves";
-import { kitchenPlanProblem, kitchenRuns, kitchenSizes, runGeometry } from "./kitchen-plan-shapes";
+import { FRONT, kitchenPlanProblem, kitchenRuns, kitchenSizes, runGeometry } from "./kitchen-plan-shapes";
 import { findFeature } from "./operations";
 import { keptOf } from "./kitchen-keep";
 
@@ -142,9 +142,18 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
         const k = items.findIndex((it) => it.id === u.item);
         if (k < 0) return;
         const item = items[k]!;
-        // A fridge's surround: its caisson is narrower than it, set by the plan (its sizes are set in « Meuble choisi »).
-        if (applianceOf(item)?.role === "fridge-surround") return;
         const limits = sizeLimits(plan, itemEntry(item));
+        // A fridge's surround, its caisson changed: the surround follows it as one — its sides round it (wider by them),
+        // as deep, up to its top (the fridge under it as it was).
+        if (applianceOf(item)?.role === "fridge-surround") {
+          const next: KitchenRunItem = { ...item };
+          if (differs(c.width, u.width)) next.width = clamp(c.width + 2 * FRONT, limits.width);
+          if (differs(c.depth, u.depth)) next.depth = clamp(c.depth, limits.depth);
+          if (differs(c.height, u.height)) next.height = clamp(c.origin[2] + c.height, limits.height!);
+          runs[run.id] = items.map((it, j) => (j === k ? next : it));
+          changed = true;
+          return;
+        }
         const next: KitchenRunItem = { ...item };
         if (differs(c.width, u.width)) next.width = clamp(c.width, limits.width);
         if (differs(c.depth, u.depth)) next.depth = clamp(c.depth, limits.depth);

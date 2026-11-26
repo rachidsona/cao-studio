@@ -4,6 +4,7 @@
  * la suivent. Le meuble reste ainsi un seul meuble, réglable, avec une seule annulation.
  */
 import { bodyOrigin, findFeature } from "../document/operations";
+import { planUnitCabinet } from "../document/kitchen-plan-add";
 import { featureOfBody, type CadDocument } from "../document/types";
 
 export interface Whole {
@@ -20,6 +21,9 @@ export function wholeOwner(doc: CadDocument, bodyId: string): { kind: Whole["kin
   if (f?.type === "cabinet") return { kind: "cabinet", id: f.id };
   if (f?.type === "fronts") return { kind: "cabinet", id: f.cabinet };
   if (f?.type === "niche" || f?.type === "panels") return f.sketch ? { kind: "sketch", id: f.sketch } : null;
+  // A side or the fridge of a fridge's surround: the surround, by its caisson (the plan makes the rest again round it).
+  const unit = f ? planUnitCabinet(doc, f.id) : null;
+  if (unit) return { kind: "cabinet", id: unit };
   // An extrusion is part of a whole when its sketch is a piece of furniture (a Répartition, a dressing or kitchen plan);
   // the bodies of a plain sketch (a sofa drawn in one sketch) are each their own.
   if (f?.type === "extrude" && f.sketch && furniture(doc, f.sketch)) return { kind: "sketch", id: f.sketch };

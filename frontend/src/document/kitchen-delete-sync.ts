@@ -9,7 +9,7 @@
  * Supprimés avec d'autres pièces de la cuisine (un plan de travail, un mur), le plan les oublie aussi, sans rien refaire. Pur.
  */
 import { kitchenPlanIn, withKitchenBuilt } from "./kitchen-floor";
-import { runCabinets } from "./kitchen-plan-add";
+import { planUnitCabinet, runCabinets } from "./kitchen-plan-add";
 import { deleteFeatures, findFeature, updateFeature } from "./operations";
 import type { CabinetFeature, CadDocument, KitchenFloorPlan, KitchenRunItem } from "./types";
 import { FILLER, isFiller, isSpace, itemEntry, newItem, rowOf, SPACE, SPACE_WALL } from "../features/kitchen-run-items";
@@ -44,7 +44,9 @@ export function withDeletedFreed(prev: CadDocument, next: CadDocument): CadDocum
     let freed = false;
     const made = Object.values(plan.made ?? {}).flat();
     const deleted = made.filter((id) => !findFeature(doc, id) && findFeature(prev, id));
-    const units = new Set(deleted.filter((id) => findFeature(prev, id)?.type === "cabinet"));
+    // A piece of a unit made of several (a side or the fridge of a fridge's surround): the whole unit goes, as one.
+    const pieces = deleted.filter((id) => findFeature(prev, id)?.type !== "cabinet" && planUnitCabinet(prev, id));
+    const units = new Set([...deleted.filter((id) => findFeature(prev, id)?.type === "cabinet"), ...pieces.map((id) => planUnitCabinet(prev, id)!)]);
     const fillers = deletedFillers(prev, plan.made ?? {}, deleted);
     // A run's plinth deleted (any piece of it): that run has none, until it is put back on its strip.
     const kicks = Object.entries(plan.made ?? {}).flatMap(([run, ids]) => ids.filter((id) => deleted.includes(id) && /^Plinthe /.test(findFeature(prev, id)?.name ?? "")).map((id) => ({ id, run })));
@@ -52,7 +54,7 @@ export function withDeletedFreed(prev: CadDocument, next: CadDocument): CadDocum
     // Only units (their fronts go with them) and fillers: with a worktop or a wall deleted too, the kitchen is being taken away.
     const only = deleted.every((id) => {
       const f = findFeature(prev, id);
-      return units.has(id) || fillers.some((x) => x.id === id) || kicks.some((x) => x.id === id) || (f?.type === "fronts" && units.has(f.cabinet));
+      return units.has(id) || pieces.includes(id) || fillers.some((x) => x.id === id) || kicks.some((x) => x.id === id) || (f?.type === "fronts" && units.has(f.cabinet));
     });
     if (fillers.length && only) {
       const fills = kitchenFromPlan(plan, kitchenRoomInfo(prev, plan)).fills;

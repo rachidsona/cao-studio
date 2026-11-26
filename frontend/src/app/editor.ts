@@ -227,10 +227,10 @@ export class Editor {
   }
   /** After each model shown, with the real document it was computed from (null: a tool's provisional one). */ onShown: (result: RecomputeResponse, doc: CadDocument | null) => void = () => {};
 
-  /** Applies a new document as one undo step (workshop tools too); `amend`: in place of the last one (a tool set again). */
+  /** Applies a new document as one undo step (workshop tools too); `amend`: in place of the last one (a tool set again), followed from the document before it. */
   change(next: CadDocument, amend = false): Promise<void> {
     // A change the project could not be reopened with is refused, said, and not recorded (audit of 11/11/2026).
-    const doc = normalizeDoc(this.doc, next), problems = validateDocument(doc);
+    const doc = normalizeDoc((amend && this.session.undo.last) || this.doc, next), problems = validateDocument(doc);
     if (problems.length) return (this.notify(`Modification refusée, le projet ne se rouvrirait plus : ${problems.slice(0, 2).join(" ; ")}`, "error"), Promise.resolve());
     this.session[amend ? "replace" : "apply"](doc);
     this.sketches.followDocument();
