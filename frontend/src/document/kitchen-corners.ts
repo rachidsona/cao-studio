@@ -22,7 +22,7 @@ export const CORNER_KINDS: Record<CornerKind, { label: string; summary: string }
   lemans: { label: "Meuble d'angle LeMans", summary: "Une porte (45 cm d'origine), deux plateaux qui pivotent et sortent : tout l'angle sert." },
   magic: { label: "Meuble d'angle Magic Corner", summary: "Une porte (45 cm d'origine) ; à l'ouverture, deux paniers sortent et ceux du fond viennent devant : tout l'angle sert." },
   l: { label: "Meuble d'angle en L", summary: "Un caisson sur chaque mur (90 cm d'origine), porte pliante : l'angle s'ouvre en grand." },
-  lcase: { label: "Caisson d'angle en L", summary: "Un seul caisson en L sur les deux murs (90 cm d'origine) : dessous, étagère et dessus en L, un fond contre chaque mur, un côté au bout de chaque bras jusqu'au sol, porte pliante comme le meuble en L, ouverte à plat (180°)." },
+  lcase: { label: "Caisson d'angle en L", summary: "Un seul caisson en L sur les deux murs (90 cm d'origine) : dessous, étagères et dessus en L, cloison au coin au choix, un fond contre chaque mur, un côté au bout de chaque bras jusqu'au sol, porte pliante comme le meuble en L, ouverte à plat (180°)." },
   diagonal: { label: "Meuble d'angle en biais", summary: "Sur les deux murs (90 cm d'origine), une porte à 45° : un pentagone, une étagère, l'angle se range de face." },
   carousel: { label: "Meuble d'angle carrousel", summary: "En L (90 cm d'origine), porte pliante ; deux plateaux tournants (trois quarts de cercle) : on fait tourner l'angle." },
 };
@@ -58,6 +58,8 @@ export interface CornerChange {
   /** The shelves of its corner unit, low and up (« Meuble choisi » of the run's editor). */
   shelves?: number;
   wallShelves?: number;
+  /** A caisson in L's divider at its corner, between its arms. */
+  divider?: boolean;
   /** Its door's look and side, low and up, as set in Façades (kitchen-sync.ts). */
   look?: CornerDoorLook;
   wallLook?: CornerDoorLook;
@@ -66,11 +68,11 @@ export interface CornerChange {
 /** How many shelves a corner unit may have, low or up. */
 export const CORNER_SHELVES = 4;
 /** The corner units whose shelves one chooses: not those whose trays or baskets fill them, nor the one cut at 45°. */
-export const shelvedCorner = (kind: CornerKind | WallCornerKind): boolean => kind === "unit" || kind === "l";
+export const shelvedCorner = (kind: CornerKind | WallCornerKind): boolean => kind === "unit" || kind === "l" || kind === "lcase";
 
 /** The corner settings with this corner changed. */
 export function withCorner(p: CornerSetting, joint: Joint, c: CornerChange): CornerSetting {
-  const sizes = { ...p.cornerSizes?.[joint], ...(c.door !== undefined ? { door: c.door } : {}), ...(c.arm !== undefined ? { arm: c.arm } : {}), ...(c.wallDoor !== undefined ? { wallDoor: c.wallDoor } : {}), ...(c.wallArm !== undefined ? { wallArm: c.wallArm } : {}), ...(c.shelves !== undefined ? { shelves: c.shelves } : {}), ...(c.wallShelves !== undefined ? { wallShelves: c.wallShelves } : {}), ...(c.look ? { look: c.look } : {}), ...(c.wallLook ? { wallLook: c.wallLook } : {}) };
+  const sizes = { ...p.cornerSizes?.[joint], ...(c.door !== undefined ? { door: c.door } : {}), ...(c.arm !== undefined ? { arm: c.arm } : {}), ...(c.wallDoor !== undefined ? { wallDoor: c.wallDoor } : {}), ...(c.wallArm !== undefined ? { wallArm: c.wallArm } : {}), ...(c.shelves !== undefined ? { shelves: c.shelves } : {}), ...(c.wallShelves !== undefined ? { wallShelves: c.wallShelves } : {}), ...(c.divider !== undefined ? { divider: c.divider } : {}), ...(c.look ? { look: c.look } : {}), ...(c.wallLook ? { wallLook: c.wallLook } : {}) };
   return {
     corners: { ...p.corners, ...(c.kind ? { [joint]: c.kind } : {}) },
     wallCorners: { ...p.wallCorners, ...(c.wall ? { [joint]: c.wall } : {}) },
@@ -105,6 +107,8 @@ export interface CornerSide {
   trays: [number, number][];
   /** How far the trays reach from the wall, across the run (missing: the whole depth). */
   across?: [number, number];
+  /** A caisson in L's divider at its corner, between its arms (CornerChange.divider). */
+  divider?: boolean;
   /** A corner unit's whole span along the run, under the worktop: its cabinet's, or a caisson in L's (no cabinet of its own). */
   span?: [number, number];
   /** The space left empty between a corner unit and the corner's wall (CORNER_WALL_GAP). */
@@ -134,6 +138,8 @@ export function cornerSide(p: KitchenFloorPlan, run: KitchenRun, side: Joint, of
     // One caisson in L, boards made by document/kitchen-shaped.ts; on each run, its leaf of the folding door, as the L's.
     const arm = lArm(p, joint);
     out.span = span(end === "pass" ? 0 : D, arm);
+    out.shelves = 1;
+    if (p.cornerSizes?.[joint]?.divider) out.divider = true;
     out.fronts.push(front("door", "Porte pliante", D + FRONT + 1.5, arm - 1.5));
   } else if (isLCorner(kind)) {
     const arm = lArm(p, joint);
@@ -164,7 +170,7 @@ export function cornerSide(p: KitchenFloorPlan, run: KitchenRun, side: Joint, of
     out.fronts.push(front("filler", "Fileur d'angle", end === "pass" ? D : D + FRONT, c));
   }
   const own = p.cornerSizes?.[joint]?.shelves;
-  if (out.cabinet && shelvedCorner(kind) && own !== undefined) out.shelves = Math.max(0, Math.min(CORNER_SHELVES, own));
+  if ((out.cabinet || out.span) && shelvedCorner(kind) && own !== undefined) out.shelves = Math.max(0, Math.min(CORNER_SHELVES, own));
   return out.cabinet ? { ...out, span: out.cabinet } : out;
 }
 

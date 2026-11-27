@@ -488,6 +488,13 @@ test("angles : la porte du meuble d'angle se règle, et un haut d'angle se pose 
   await expect(strip.locator('[data-corner-total="left"]')).toHaveText(/angle ✓ 92 cm$/);
   await expect(strip.locator('[data-corner-dim="left"]')).toHaveCount(1);
   await expect(strip.locator('[data-corner-front="door"]')).toHaveCount(1);
+  // Its inside: the 2 shelves set before kept, one more, a divider at its corner, built by the kernel.
+  await expect(corner.locator('[data-corner-count="shelves"]')).toHaveText("2");
+  await corner.locator('[data-corner-shelves="more"]').click();
+  await expect(corner.locator('[data-corner-count="shelves"]')).toHaveText("3");
+  await corner.locator("[data-corner-divider]").check();
+  await expect(page.locator('[title="Caisson d\'angle en L A — cloison — OK"]').first()).toBeAttached({ timeout: 60_000 });
+  await expect(page.locator('[title="Caisson d\'angle en L A — étagère 2 (2) — OK"]').first()).toBeAttached();
   expect(errors).toEqual([]);
 });
 

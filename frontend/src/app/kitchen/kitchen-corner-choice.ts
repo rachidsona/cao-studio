@@ -52,6 +52,13 @@ function shelfStep(label: string, key: string, count: number, set: (n: number) =
   return el("div", { class: "grid grid-cols-[1fr_auto_2rem_auto] items-center gap-1" }, label, step("−", "Une étagère de moins", count - 1), el("span", { class: "text-center font-mono", "data-corner-count": key }, String(count)), step("+", "Une étagère de plus", count + 1));
 }
 
+/** A caisson in L's divider at its corner, put or taken away. */
+function dividerCheck(on: boolean, set: (on: boolean) => void): HTMLElement {
+  const box = el("input", { type: "checkbox", checked: on, "data-corner-divider": "" });
+  box.addEventListener("change", () => set(box.checked));
+  return el("label", { class: "flex items-center gap-1.5", title: "Une cloison entre les deux bras du caisson, ses étagères coupées en deux" }, box, "Cloison au coin");
+}
+
 /** The corners of the run (`only`: that end alone, chosen on its strip), each with its solutions, sizes and shelves. */
 export function cornerChoice(plan: KitchenFloorPlan, run: KitchenRun, unit: DisplayUnit, change: (joint: Joint, c: CornerChange) => void, refresh: () => void, titled = true, only?: "left" | "right"): HTMLElement | null {
   const sides = (["left", "right"] as const).filter((side) => run[side] !== "free" && (!only || side === only));
@@ -93,7 +100,8 @@ export function cornerChoice(plan: KitchenFloorPlan, run: KitchenRun, unit: Disp
           }),
         ),
         lowSize,
-        low?.cabinet && shelvedCorner(chosen) ? shelfStep("Étagères", "shelves", low.shelves, (n) => set({ shelves: n })) : null,
+        low?.span && shelvedCorner(chosen) ? shelfStep("Étagères", "shelves", low.shelves, (n) => set({ shelves: n })) : null,
+        chosen === "lcase" ? dividerCheck(!!low?.divider, (on) => set({ divider: on })) : null,
         where ? el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, where) : null,
         run.wall
           ? el(

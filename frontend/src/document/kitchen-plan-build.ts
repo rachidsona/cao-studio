@@ -277,7 +277,7 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
     if ((corner.kind === "diagonal" || corner.kind === "lcase") && pass) {
       const L = run.length;
       const at = (u: number, a: number) => runAt(run, side === "left" ? u : L - u, run.back + a);
-      if (corner.kind === "lcase") lCorner(corner.name, at, lArm(p, joint), D, [s.plinth, s.base], cornerNotches(p, run, side), box);
+      if (corner.kind === "lcase") lCorner(corner.name, at, lArm(p, joint), D, [s.plinth, s.base], cornerNotches(p, run, side), corner, box);
       else diagonalCorner(corner.name, at, lArm(p, joint), D, [s.plinth, s.base], s.plinth, FRONT, [run.zone.run.depth, p.worktopHeight, p.worktopHeight - s.base], box);
     }
     if (corner.cabinet) cabinet(corner.name, corner.cabinet[0], corner.cabinet[1] - corner.cabinet[0], D, 0, s.base, { plinth: s.plinth, shelves: corner.shelves, ...lowDoor, corner: true, cornerEdit: lowEdit });

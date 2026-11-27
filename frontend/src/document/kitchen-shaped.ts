@@ -114,21 +114,37 @@ export function diagonalCorner(name: string, at: At, arm: number, depth: number,
 }
 
 /**
- * A caisson in L, its arms `arm` long on both walls from the corner, `depth` deep (as `diagonalCorner`): bottom, a
- * shelf and top in L, a back against each wall (between bottom, top and the sides, as thin as the units' backs), a
+ * A caisson in L, its arms `arm` long on both walls from the corner, `depth` deep (as `diagonalCorner`): bottom, its
+ * `shelves` (evenly up, in L; in two across a `divider` at its corner, between its arms) and top in L, a back against each wall (between bottom, top and the sides, as thin as the units' backs), a
  * side at the end of each arm down to the floor, notched at its front over `socle` for the plinth (`notch` deep, at the
  * end of the arm of the run that passes, and of the other's; 0: square). Its folding door and its plinth are the runs'
  * (document/kitchen-plan-build.ts, from its corner's fronts), as the L corner unit's.
  */
-export function lCorner(name: string, at: At, arm: number, depth: number, [z0, z1]: [number, number], notch: [number, number], box: BoxOf): void {
+export function lCorner(name: string, at: At, arm: number, depth: number, [z0, z1]: [number, number], notch: [number, number], { shelves, divider }: { shelves: number; divider?: boolean }, box: BoxOf): void {
   const put: BoxOf = (label, kind, where, extra) => box(`${name} — ${label}`, kind, where, { ...extra, corner: true, carcass: true });
   const plate = (label: string, z: number, inner = 0, back = 0) => {
     const s = shaped(at, [[back, back], [arm - inner, back], [arm - inner, depth], [depth, depth], [depth, arm - inner], [back, arm - inner]], z, z + T);
     put(label, "panel", s.at, { outline: s.outline });
   };
-  // The bottom between the sides; the shelf too, half way up, in front of the backs.
+  // The bottom between the sides; the shelves too, in front of the backs.
   plate("dessous", z0, T);
-  plate("étagère", (z0 + z1) / 2 - T / 2, T, BACK);
+  for (let k = 1; k <= shelves; k++) {
+    const [label, z] = [shelves > 1 ? `étagère ${k}` : "étagère", z0 + ((z1 - z0) * k) / (shelves + 1) - T / 2];
+    if (!divider) plate(label, z, T, BACK);
+    else {
+      // Cut by the divider: the arm that passes (the corner with it), and the other one beyond the divider.
+      const parts: [string, [number, number][]][] = [[label, [[BACK, BACK], [arm - T, BACK], [arm - T, depth], [BACK, depth]]], [`${label} (2)`, [[BACK, depth + T], [depth, depth + T], [depth, arm - T], [BACK, arm - T]]]];
+      for (const [part, pts] of parts) {
+        const s = shaped(at, pts, z, z + T);
+        put(part, "panel", s.at, { outline: s.outline });
+      }
+    }
+  }
+  if (divider) {
+    // Across the other arm, flush with the front of the one that passes, from its back to its front.
+    const s = shaped(at, [[BACK, depth], [depth, depth], [depth, depth + T], [BACK, depth + T]], z0 + T, z1 - T);
+    put("cloison", "panel", s.at, { outline: s.outline });
+  }
   plate("dessus", z1 - T);
   /** A side from the wall (`w`) to the front, across `c`…`c + T`: its outline seen from its face, the notch cut out. */
   const side = (label: string, onU: boolean, c: number, cut: number) => {

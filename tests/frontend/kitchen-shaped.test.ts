@@ -89,6 +89,13 @@ describe("meubles en forme", () => {
     }
     // The worktops of both runs cover it, as over a corner unit.
     expect(layout.boxes.filter((b) => b.kind === "worktop").map((b) => b.name)).toEqual(["Plan de travail A", "Plan de travail B"]);
+    // Its shelves chosen (0 to 4), and a divider at its corner: each shelf then in two, on either side of it.
+    const set = kitchenFromPlan({ ...p, cornerSizes: { left: { shelves: 3, divider: true } } }).boxes.filter((b) => b.name.startsWith("Caisson d'angle en L"));
+    const inner = set.filter((b) => /— (étagère|cloison)/.test(b.name));
+    expect(inner.map((b) => b.name.replace(/^.* — /, ""))).toEqual(["étagère 1", "étagère 1 (2)", "étagère 2", "étagère 2 (2)", "étagère 3", "étagère 3 (2)", "cloison"]);
+    const clash = (a: KitchenBox, b: KitchenBox) => [0, 1, 2].every((i) => a.from[i]! < b.to[i]! - 1e-6 && b.from[i]! < a.to[i]! - 1e-6);
+    for (const a of inner) for (const b of inner) if (a !== b) expect(clash(a, b), `${a.name} ${b.name}`).toBe(false);
+    expect(kitchenFromPlan({ ...p, cornerSizes: { left: { shelves: 0 } } }).boxes.some((b) => b.name.includes("— étagère"))).toBe(false);
     // Even with nothing else on the other wall: its worktop over the caisson's arm, from the run that passes.
     const alone = kitchenFromPlan({ ...p, runs: { A: p.runs!.A! } });
     const top = alone.boxes.find((b) => b.name === "Plan de travail B")!;
