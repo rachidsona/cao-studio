@@ -2,7 +2,8 @@
 import { describe, expect, it } from "vitest";
 import { kitchenPlanIn, kitchenRunOf, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
-import { ROOM_MADE, roomBounds, roomLook, roomShell } from "../../frontend/src/document/kitchen-plan-shell";
+import { OPENING, ROOM_MADE, roomBounds, roomLook, roomShell, withOpenings } from "../../frontend/src/document/kitchen-plan-shell";
+import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { bodyInfo } from "../../frontend/src/document/materials";
 import { createReferencePlate, type KitchenFloorPlan } from "../../frontend/src/document/types";
 import { flatsBehind } from "../../frontend/src/viewport/wall-cutaway";
@@ -11,6 +12,26 @@ const plan = (more: Partial<KitchenFloorPlan>): KitchenFloorPlan => ({ ...KITCHE
 const spans = (p: KitchenFloorPlan) => Object.fromEntries(roomShell(p).map((b) => [b.name, [b.from, b.to].map((v) => v.map(Math.round))]));
 
 describe("pièce d'un plan de cuisine", () => {
+  it("portes et fenêtres percées dans ses murs : chaque mur en morceaux autour du trou", () => {
+    const p = plan({ model: "I", lengthA: 3600, openings: [{ ...OPENING.window, wall: "A" }, { ...OPENING.door, wall: "B", at: 500 }, { ...OPENING.door, wall: "D" }] });
+    // Wall A, the run's: before, after, under the sill and over the window.
+    const a = withOpenings(p, kitchenFromPlan(p).boxes).filter((b) => b.name.startsWith("Mur A")).map((b) => [b.name, b.from[0], b.to[0], b.from[2], b.to[2]]);
+    expect(a).toEqual([
+      ["Mur A avant la fenêtre", 0, 800, 0, 2500],
+      ["Mur A après la fenêtre", 2000, 3600, 0, 2500],
+      ["Mur A sous la fenêtre", 800, 2000, 0, 900],
+      ["Mur A sur la fenêtre", 800, 2000, 2250, 2500],
+    ]);
+    // Wall B, 50 cm from wall A, a door: no piece under it. Wall D, from wall B's side.
+    const shell = spans(p);
+    expect(shell["Mur B avant la porte"]).toEqual([[-100, -500, 0], [0, 100, 2500]]);
+    expect(shell["Mur B après la porte"]).toEqual([[-100, -3100, 0], [0, -1330, 2500]]);
+    expect(shell["Mur B sur la porte"]).toEqual([[-100, -1330, 2040], [0, -500, 2500]]);
+    expect(Object.keys(shell).filter((n) => n.startsWith("Mur D"))).toEqual(["Mur D avant la porte", "Mur D après la porte", "Mur D sur la porte"]);
+    // None: the walls as they were.
+    expect(withOpenings(plan({ model: "I" }), roomShell(plan({ model: "I" })))).toEqual(roomShell(plan({ model: "I" })));
+  });
+
   it("un mur droit : la pièce large comme lui, profonde de 3 m, fermée sur ses trois autres côtés", () => {
     const p = plan({ model: "I", lengthA: 3600 });
     expect(roomBounds(p)).toEqual({ x: [0, 3600], y: [-3000, 0] });

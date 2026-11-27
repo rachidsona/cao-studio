@@ -262,6 +262,8 @@ export interface KitchenFloorPlan {
   noWalls?: boolean;
   /** Its walls only, behind its runs: not the rest of its room — the walls round it, its floor, its ceiling (document/kitchen-plan-shell.ts). « Pièce fermée » unticked. */
   noRoom?: boolean;
+  /** The doors and windows cut through its walls (document/kitchen-plan-shell.ts `withOpenings`). */
+  openings?: KitchenOpening[];
   /** By run: its plinth taken away, and how far it is set back from the fronts (mm). The look of the plinths (appearance/library.ts), over the fronts' material's own. */
   noKick?: Record<string, boolean>;
   kickSetback?: Record<string, number>;
@@ -1021,6 +1023,17 @@ export interface TrimFeature extends FeatureBase {
   snack?: import("../features/snack-parts").SnackSettings;
   /** Made by « Plinthe technique » (features/plinth-tech.ts): grilles and plinth drawers, made again by that tool. */
   plinthTech?: import("../features/plinth-tech").PlinthTechSettings;
+}
+
+/** A door or a window in a wall of a Plan de cuisine (mm): on wall A or D, `at` from wall B's side; on B or C, from wall A. */
+export interface KitchenOpening {
+  kind: "door" | "window";
+  wall: "A" | "B" | "C" | "D";
+  at: number;
+  width: number;
+  height: number;
+  /** A window's: from the floor to its bottom. */
+  sill?: number;
 }
 
 /** The room as surveyed (features/room-plan.ts): walls, their openings and what is in the way. Its bodies are "room". */

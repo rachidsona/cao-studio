@@ -11,7 +11,7 @@ import { decorateKitchen, layoutPlan } from "./kitchen-plan";
 import { kitchenFromPlan, type KitchenRoomInfo } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
 import { FRONT, KITCHEN_PLAN, kitchenLines, kitchenRuns } from "./kitchen-plan-shapes";
-import { ROOM_MADE, roomShell } from "./kitchen-plan-shell";
+import { ROOM_MADE, roomShell, withOpenings } from "./kitchen-plan-shell";
 import { deleteFeatures, findFeature, latestBody, uniqueId, updateFeature } from "./operations";
 import { linesGeometry } from "./plan-layout";
 import type { Point } from "./plan-shapes";
@@ -132,7 +132,9 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
   const { next } = deleteFeatures(base, madeBefore);
   let doc = next;
   const room: KitchenRoomInfo | undefined = kitchenRoomInfo(doc, plan);
-  const layout = kitchenFromPlan(plan, room);
+  const made0 = kitchenFromPlan(plan, room);
+  // Its doors and windows cut through the walls it draws.
+  const layout = { ...made0, boxes: withOpenings(plan, made0.boxes) };
   const made: Record<string, string[]> = {};
   const problems: string[] = [];
   for (const run of kitchenRuns(plan)) {

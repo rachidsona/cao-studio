@@ -2996,6 +2996,12 @@ opération existante.
       plan ; « Murs de la pièce » décochée les enlève avec les murs, et **« Pièce fermée (sol, plafond, murs d'en face) »**
       décochée, juste dessous (`noRoom`), ne garde que les murs derrière les linéaires, sans la vue de l'intérieur.
       Elles ne portent pas d'ombre dans la vue.
+      **Portes et fenêtres** (sous « Pièce fermée », `openings`, `app/kitchen/kitchen-openings.ts`) : « + Porte »
+      (83 × 204 cm) et « + Fenêtre » (120 × 135 cm, allège 90) se mettent sur le mur A, B, C ou D, chacune à sa place
+      (sur A et D depuis le côté du mur B, sur B et C depuis le mur A), sa largeur, sa hauteur et son allège tapées, ou
+      se retirent ; le mur est refait en morceaux autour du trou — « Mur A avant la fenêtre », « … après », « … sous »,
+      « … sur » (`withOpenings`). Un trou seulement, sans cadre ni ouvrant, et les meubles devant ne s'en écartent pas :
+      pour cela, relever la pièce avec l'outil Pièce avant de créer le plan.
       **Vue de l'intérieur** (`app/kitchen/kitchen-room-view.ts`) : à la création du plan, à « Proposer une cuisine »
       et au premier linéaire aménagé, la vue se tourne vers le coin des linéaires, l'œil un peu au-dessus des yeux et
       sous le plafond, toute la cuisine dans le cadre ; les murs passés derrière l'œil s'effacent comme d'habitude, et

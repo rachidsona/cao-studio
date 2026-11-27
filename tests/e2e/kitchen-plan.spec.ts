@@ -1063,6 +1063,30 @@ test("plan de cuisine : sa pièce fermée d'office (murs, sol, plafond), vue de 
   expect(errors).toEqual([]);
 });
 
+test("plan de cuisine : portes et fenêtres percées dans les murs de sa pièce", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-plan-cuisine-fenetres");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await openCard(tool, "Matières et finitions");
+  // A window on wall A, a door moved to wall D.
+  await tool.locator('[data-plan-opening-add="window"]').click();
+  await tool.locator('[data-plan-opening-add="door"]').click();
+  await tool.locator('[data-plan-opening="door"] [data-plan-opening-wall]').selectOption("D");
+  const sill = tool.locator('[data-plan-opening="window"] [data-plan-opening-field="sill"]');
+  await expect(sill).toHaveValue("90");
+  await sill.fill("100");
+  await sill.press("Enter");
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  const names = async () => (await tree(page)).split("\n");
+  await expect.poll(async () => (await names()).filter((l) => / (sous|sur) la (fenêtre|porte)$/.test(l)).sort(), { timeout: 60_000 }).toEqual(["Mur A sous la fenêtre", "Mur A sur la fenêtre", "Mur D sur la porte"]);
+  await shot(page, "25-piece-fenetres");
+  expect(errors).toEqual([]);
+});
+
 test("plan de cuisine : « Cacher la pièce et les murs » dans la colonne de la vue ; l'espace sous les hauts réglé à 60 cm", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));

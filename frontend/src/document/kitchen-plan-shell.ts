@@ -8,7 +8,7 @@
 import type { KitchenBox } from "../features/kitchen-layout";
 import { WALL_THICKNESS as T } from "./joinery-defaults";
 import { kitchenRuns, runAt, type KitchenRun } from "./kitchen-plan-shapes";
-import type { KitchenFloorPlan, Vec3 } from "./types";
+import type { KitchenFloorPlan, KitchenOpening, Vec3 } from "./types";
 
 /** Where the plan keeps the pieces of its room (KitchenFloorPlan.made), beside those of its runs. */
 export const ROOM_MADE = "room";
@@ -68,6 +68,45 @@ export function roomShell(p: KitchenFloorPlan): KitchenBox[] {
   }
   out.push({ name: "Sol", kind: "wall", from: [x[0], y[0], -ROOM_SHELL.slab], to: [x[1], 0, 0], look: ROOM_SHELL.floor });
   out.push({ name: "Plafond", kind: "wall", from: [x[0] - T, y[0] - T, p.height], to: [x[1] + T, T, p.height + ROOM_SHELL.slab] });
+  return withOpenings(p, out);
+}
+
+/** A door or a window as « + Porte » and « + Fenêtre » put it (mm). */
+export const OPENING: Record<KitchenOpening["kind"], Omit<KitchenOpening, "wall">> = {
+  door: { kind: "door", at: 200, width: 830, height: 2040 },
+  window: { kind: "window", at: 800, width: 1200, height: 1350, sill: 900 },
+};
+
+/**
+ * The plan's walls with its doors and windows cut through (plan frame): on wall A or D, `at` from wall B's side; on
+ * wall B or C, from wall A. A wall cut is in pieces round the hole: before, after, under (a window's sill), over.
+ * shortcut: a hole only, no frame nor leaf; the units in front of it are not moved (a surveyed « Pièce » makes the runs go round them).
+ */
+export function withOpenings(p: KitchenFloorPlan, boxes: KitchenBox[]): KitchenBox[] {
+  if (!p.openings?.length) return boxes;
+  const { x, y } = roomBounds(p);
+  // Each wall: the axis it runs along, where its face is across, and the side of the face its thickness lies.
+  const line = { A: { along: 0, at: 0, out: 1, from: x[0], dir: 1 }, D: { along: 0, at: y[0], out: -1, from: x[0], dir: 1 }, B: { along: 1, at: x[0], out: -1, from: 0, dir: -1 }, C: { along: 1, at: x[1], out: 1, from: 0, dir: -1 } } as const;
+  let out = boxes;
+  for (const o of p.openings) {
+    const w = line[o.wall];
+    const across = 1 - w.along;
+    const [a, b] = [w.from + w.dir * o.at, w.from + w.dir * (o.at + o.width)].sort((m, n) => m - n) as [number, number];
+    const [z0, z1] = [o.sill ?? 0, (o.sill ?? 0) + o.height];
+    out = out.flatMap((bx) => {
+      // A wall standing on that face, along it, the hole within it.
+      const [lo, hi] = [Math.min(w.at, w.at + w.out * T) - 1, Math.max(w.at, w.at + w.out * T) + 1];
+      const lengthwise = bx.to[w.along]! - bx.from[w.along]! > bx.to[across]! - bx.from[across]!;
+      if (bx.kind !== "wall" || bx.to[2] - bx.from[2] < 1000 || !lengthwise || bx.from[across]! < lo || bx.to[across]! > hi || bx.to[w.along]! <= a || bx.from[w.along]! >= b) return [bx];
+      const cut = (u0: number, u1: number, h0: number, h1: number): [Vec3, Vec3] => {
+        const [f, t]: [Vec3, Vec3] = [[...bx.from], [...bx.to]];
+        [f[w.along], t[w.along], f[2], t[2]] = [u0, u1, h0, h1];
+        return [f, t];
+      };
+      const parts = [cut(bx.from[w.along]!, a, bx.from[2], bx.to[2]), cut(b, bx.to[w.along]!, bx.from[2], bx.to[2]), cut(Math.max(a, bx.from[w.along]!), Math.min(b, bx.to[w.along]!), bx.from[2], z0), cut(Math.max(a, bx.from[w.along]!), Math.min(b, bx.to[w.along]!), z1, bx.to[2])];
+      return parts.map(([from, to], i) => ({ ...bx, name: `${bx.name} ${[...(w.dir > 0 ? ["avant", "après"] : ["après", "avant"]), "sous", "sur"][i]} ${o.kind === "door" ? "la porte" : "la fenêtre"}`, from, to })).filter((c) => c.to.every((v, i) => v - c.from[i]! > 1));
+    });
+  }
   return out;
 }
 

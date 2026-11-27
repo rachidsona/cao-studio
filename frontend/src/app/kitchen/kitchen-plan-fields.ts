@@ -6,6 +6,7 @@ import { el } from "../../ui/dom";
 import { lookPicker } from "./look-picker";
 import { kitchenWallsShown, withKitchenWalls } from "../../document/kitchen-walls";
 import type { Editor } from "../editor";
+import { openingsFields } from "./kitchen-openings";
 
 
 export type Sized = KitchenField | "lengthA" | "height" | "depth" | "wallDepth" | "wallGap" | "worktopHeight" | "islandLength" | "islandDepth" | "passage" | "plinth" | "worktopThickness" | "capThickness" | "capHeight" | "capOverhang" | "capDepth" | "baseDepth" | "islandShift";
@@ -93,5 +94,5 @@ export function wallsCheck(editor: Editor, planId: string | undefined, plan: Kit
   // Its own room, closed round its walls (document/kitchen-plan-shell.ts): with its walls only.
   const closed = el("input", { type: "checkbox", class: "size-4 shrink-0 accent-sky-600", checked: plan.noRoom !== true, disabled: plan.noWalls === true, "data-plan-room": "" });
   closed.addEventListener("change", () => setPlan({ noRoom: !closed.checked }));
-  return el("div", {}, walls, el("label", { class: "flex min-h-7 items-center gap-2", title: "Cochée : la pièce est fermée autour de la cuisine — les murs qui manquent, un sol et un plafond —, et la vue se place à l'intérieur. Décochée : seuls les murs derrière les linéaires." }, closed, "Pièce fermée (sol, plafond, murs d'en face)"));
+  return el("div", {}, walls, el("label", { class: "flex min-h-7 items-center gap-2", title: "Cochée : la pièce est fermée autour de la cuisine — les murs qui manquent, un sol et un plafond —, et la vue se place à l'intérieur. Décochée : seuls les murs derrière les linéaires." }, closed, "Pièce fermée (sol, plafond, murs d'en face)"), plan.noWalls ? null : openingsFields(plan, editor.unit, setPlan));
 }
