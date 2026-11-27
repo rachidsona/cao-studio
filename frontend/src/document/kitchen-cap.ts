@@ -111,7 +111,7 @@ export function kitchenCap(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, 
 
 /**
  * The casquette in caissons: over each wall unit and each arm of a wall corner unit (not the hood, a filler; not a
- * column: it rises to their top itself), a caisson of its width, 60 cm deep unless set (`capDepth`), its lift-up door.
+ * column: it rises to their top itself), a caisson of its width, 58 cm deep unless set (`capDepth`), its lift-up door.
  */
 function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: boolean, ceiling: number, notes: string[], cabinet?: CabinetOf): void {
   if (!cabinet) return;

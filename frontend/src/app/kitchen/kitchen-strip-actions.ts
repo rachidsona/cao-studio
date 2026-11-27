@@ -7,7 +7,10 @@
  * supprimée et remise, son aspect choisi dans l'Apparence.
  */
 import type { HandAppliance } from "../../document/kitchen-hand-appliances";
-import type { KitchenRunItem } from "../../document/types";
+import type { KitchenFloorPlan, KitchenRunItem } from "../../document/types";
+import { CAP } from "../../document/kitchen-plan-shapes";
+import { fromDisplay, parseNumber, toDisplay, trim, UNIT_LABELS } from "../../measurements/units";
+import type { CapState } from "./kitchen-unit-inside";
 import { isSpace, itemEntry, newItem, rowOf, SPACE, SPACE_WALL } from "../../features/kitchen-run-items";
 import { withDuplicated } from "../../features/kitchen-run-multi";
 import { el } from "../../ui/dom";
@@ -37,6 +40,9 @@ export interface StripActionsHost {
   /** The corner unit chosen taken away: a dead corner low, nothing up (its fillers close the corner). */
   removeCorner(side: "left" | "right", row: "base" | "wall"): void;
   setWorktop(on: boolean): void;
+  /** The plan's casquette (the whole kitchen's): what it is, and its change (a kind, a size, or none). */
+  cap: CapState;
+  setCap(patch: Partial<KitchenFloorPlan>): void;
   /** The run's plinth: built or not, how far back from the fronts (mm), its look; and what changes of it. */
   kick: { on: boolean; back: number; look: string | undefined };
   setKick(change: { on?: boolean; back?: number; look?: string | null }): void;
@@ -106,6 +112,9 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
     const { side, row } = host.other;
     label = `Angle ${side === "left" ? "de gauche" : "de droite"}${row === "wall" ? ", en haut" : ""} : réglé sous « Meuble choisi »`;
     buttons = [button(row === "wall" ? "Supprimer le haut d'angle" : "Supprimer le meuble d'angle", "data-strip-remove", row === "wall" ? "Plus rien en haut dans cet angle (Suppr) ; il se remet sous « Meuble choisi »" : "Un angle mort à la place, fermé par deux fileurs (Suppr) ; il se remet sous « Meuble choisi »", () => host.removeCorner(side, row))];
+  } else if (host.other?.kind === "cap") {
+    label = "Casquette des meubles hauts (toute la cuisine)";
+    buttons = capRows(host);
   } else if (host.other?.kind === "worktop") {
     label = "Plan de travail";
     buttons = [button("Supprimer le plan de travail", "data-strip-remove", "Ce linéaire sans plan de travail ni découpes (Suppr) ; il se remet d'un clic", () => host.setWorktop(false))];
@@ -146,6 +155,7 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
         else if (host.other?.kind === "caisson") host.removeCaisson(host.other.id);
         else if (host.other?.kind === "corner") host.removeCorner(host.other.side, host.other.row);
         else if (host.other?.kind === "worktop") host.setWorktop(false);
+        else if (host.other?.kind === "cap") host.setCap({ cap: undefined });
         else if (host.other?.kind === "kick") host.setKick({ on: false });
         else if (ids.length) remove(ids);
         else return;
@@ -173,4 +183,27 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
       ]);
     },
   };
+}
+
+/** The casquette chosen on the strip: its kind, its height and its depth off the wall (typed, Entrée), and « Supprimer ». */
+function capRows(host: StripActionsHost): HTMLElement[] {
+  const { kind, unit } = host.cap;
+  const FIELD = "h-7 w-20 border border-gray-300 bg-transparent px-1 text-right font-mono dark:border-gray-600";
+  const select = el("select", { class: "h-7 border border-gray-300 bg-transparent px-1 dark:border-gray-600", "aria-label": "Sorte de casquette", "data-strip-cap-kind": "" },
+    ...([["flat", "Plate"], ["box", "En caisson"], ["units", "Caissons à porte relevante"]] as const).map(([v, text]) => el("option", { value: v, selected: kind === v }, text)));
+  select.addEventListener("change", () => host.setCap({ cap: select.value as KitchenFloorPlan["cap"] }));
+  const size = (label: string, key: "capHeight" | "capDepth", value: number) => {
+    const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(value, unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})`, [`data-strip-${key}`]: "" });
+    input.addEventListener("keydown", (event) => {
+      event.stopPropagation();
+      const typed = parseNumber(input.value);
+      if (event.key === "Enter" && typed !== null && typed >= 0) host.setCap({ [key]: fromDisplay(typed, unit) });
+    });
+    return el("label", { class: "flex items-center gap-1" }, label, input);
+  };
+  const height = host.cap.height ?? (kind === "units" ? CAP.unit : CAP.height);
+  const depth = host.cap.depth ?? (kind === "units" ? CAP.unitDepth : 0);
+  const remove = el("button", { type: "button", class: SMALL, "data-strip-remove": "", title: "Plus de casquette sur toute la cuisine (Suppr) ; elle se remet dans les réglages du plan" }, "Supprimer la casquette");
+  remove.addEventListener("click", () => host.setCap({ cap: undefined }));
+  return [select, ...(kind === "flat" ? [] : [size("Hauteur", "capHeight", height)]), size(kind === "units" ? "Profondeur" : "Profondeur (0 : celle des meubles)", "capDepth", depth), remove];
 }

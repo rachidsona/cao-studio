@@ -8,6 +8,7 @@ import { cabinetBox } from "../../frontend/src/document/kitchen-catalog";
 import { kitchenPlanIn, kitchenPlanOf, kitchenRunOf, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { withDeletedFreed } from "../../frontend/src/document/kitchen-delete-sync";
 import { pieceItemOf } from "../../frontend/src/document/kitchen-plan-add";
+import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { deleteFeatures } from "../../frontend/src/document/operations";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
 import { createReferencePlate, PART_SEPARATOR, type CabinetFeature, type CadDocument, type FrontsFeature, type KitchenRunItem, type NicheFeature, type SketchFeature, type TrimFeature } from "../../frontend/src/document/types";
@@ -321,6 +322,23 @@ describe("caisson de cuisine aménagé", () => {
     expect(kitchenPlanIn(moved.doc, plan)!.runs!.A![1]).toMatchObject({ model: "space", furnished: made.sketch, depth: cabinet.depth });
     const [lo1] = caissonBox(moved.doc, made.sketch);
     expect(Math.hypot(...[0, 1, 2].map((i) => lo1[i]! - lo0[i]!))).toBeCloseTo(400, 1);
+  });
+
+  it("une colonne aménagée (ou un habillage) garde la rangée haute libre au-dessus d'elle : un meuble haut n'y va pas", () => {
+    const made = withKitchenPlan({ ...createReferencePlate(), features: [] }, { ...KITCHEN_PLAN, model: "I", lengthA: 2400, rest: { A: "end" } });
+    const built = withKitchenBuilt(made.doc, made.id, { runs: { A: items(["tall-colonne-garde-manger", 600], ["base-bas-1-porte", 600]) } });
+    if (typeof built === "string") throw new Error(built);
+    const column = built.doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Colonne"))!;
+    const turned = withCabinetFurnished(built.doc, column.id);
+    if (typeof turned === "string") throw new Error(turned);
+    const plan = kitchenPlanIn(turned.doc, made.id)!;
+    // The wall row starts where the column ends: a wall unit added goes over the base unit, not over the column.
+    const fill = kitchenFromPlan(plan).fills.A!;
+    expect(Math.min(...fill.wallFree.map(([a]) => a))).toBeGreaterThanOrEqual(600 - 1e-6);
+    const up = withKitchenBuilt(turned.doc, made.id, { runs: { A: [...plan.runs!.A!, ...items(["wall-haut-1-porte", 600])] } });
+    if (typeof up === "string") throw new Error(up);
+    const wall = up.doc.features.find((f): f is CabinetFeature => f.type === "cabinet" && f.name.startsWith("Haut"))!;
+    expect(wall.origin[0]).toBeGreaterThanOrEqual(600 - 1e-6);
   });
 
   it("le caisson aménagé supprimé dans la 3D (ses panneaux, ou lui tout entier) : plus de plan de travail ni de plinthe à sa place", () => {

@@ -44,7 +44,7 @@ const PLINTH = 150;
 export const CORNER_DOOR = 450;
 /** A corner unit with a door stands this far off the corner's wall, taken from its fixed part (mm). */
 export const CORNER_WALL_GAP = 100;
-const WALL_GAP = 550;
+export const WALL_GAP = 550;
 const WALL_HEIGHT = 700;
 /** Kept free on both sides of a door's frame or a window (mm). */
 const MARGIN = 50;
@@ -105,7 +105,7 @@ export function cornerReach(p: KitchenFloorPlan, run: KitchenRun, side: Joint): 
 /** The sizes that follow from the plan: the cabinets' depth, the base units' height, the wall units' bottom and top, a corner. */
 export function kitchenSizes(p: KitchenFloorPlan): { cabinet: number; base: number; wallBottom: number; wallTop: number; corner: number; plinth: number } {
   const cabinet = Math.min(p.baseDepth ?? BASE_DEPTH, p.depth - FRONT);
-  const wallBottom = p.worktopHeight + WALL_GAP;
+  const wallBottom = p.worktopHeight + (p.wallGap ?? WALL_GAP);
   return { cabinet, base: p.worktopHeight - (p.worktopThickness ?? WORKTOP), wallBottom, wallTop: wallBottom + WALL_HEIGHT, corner: cabinet + FRONT + CORNER_GAP, plinth: p.plinth ?? PLINTH };
 }
 
@@ -283,7 +283,7 @@ function bounds(outline: Point[]): [number, number, number, number] {
 }
 
 /** The casquette of the wall row (kitchen-cap.ts), its usual sizes (mm): a plain one's thickness, a caisson one's height, how far it comes out; a raw panel's length. */
-export const CAP = { thickness: 38, height: 80, overhang: 30, board: 19, panel: 2800, unit: 350, unitDepth: 600 };
+export const CAP = { thickness: 38, height: 80, overhang: 30, board: 19, panel: 2800, unit: 350, unitDepth: 580 };
 /** Why the casquette's sizes cannot be used, or null. */
 export function capProblem(p: KitchenFloorPlan): string | null {
   if (!p.cap) return null;
@@ -305,6 +305,7 @@ export function kitchenPlanProblem(p: KitchenFloorPlan): string | null {
   if (front?.gap !== undefined && !(front.gap >= 0 && front.gap <= 6)) return "Le jeu des façades va de 0 à 6 mm.";
   if (p.baseDepth !== undefined && !(p.baseDepth >= 300 && p.baseDepth <= p.depth - FRONT)) return "Les caissons bas ont de 30 cm de profondeur à celle du plan de travail moins les façades.";
   if (!(p.wallDepth >= 200 && p.wallDepth <= 500)) return "La profondeur des meubles hauts va de 20 à 50 cm.";
+  if (p.wallGap !== undefined && !(p.wallGap >= 400 && p.wallGap <= 900)) return "Entre le plan de travail et les meubles hauts : de 40 à 90 cm.";
   if (!(p.worktopHeight >= 700 && p.worktopHeight <= 1100)) return "Le plan de travail est de 70 à 110 cm du sol.";
   if (p.plinth !== undefined && !(p.plinth >= 50 && p.plinth <= 250)) return "Le socle va de 5 à 25 cm.";
   if (p.worktopThickness !== undefined && !(p.worktopThickness >= 10 && p.worktopThickness <= 100)) return "Le plan de travail a de 1 à 10 cm d'épaisseur.";

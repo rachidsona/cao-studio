@@ -309,7 +309,9 @@ function packedRows(g: RunGeometry, items: readonly KitchenRunItem[], heights: H
   const [ml, mr] = g.movable ?? [false, false];
   const rest: Exclude<RestSide, "walls"> = g.rest !== "walls" ? g.rest : ml && mr ? "both" : ml ? "start" : mr ? "end" : g.ends[0] !== "free" && g.ends[1] !== "free" ? "both" : g.ends[0] !== "free" ? "start" : "end";
   const base = pack(stretches, all.filter((i) => i.row === "base"), rest);
-  const columns = base.placed.filter((p) => p.entry.kind === "tall").map((p) => ({ from: p.at, to: p.at + p.item.width, what: p.entry.name, bottom: 0, top: Infinity }));
+  // A column — or a column's or a fridge surround's caisson furnished by hand in its room — leaves no wall row over it.
+  const heldTall = (i: KitchenRunItem) => !!i.furnished && !!i.from && (applianceOf({ model: i.from })?.kind === "tall" || CATALOG.some((e) => modelOf(e) === i.from && e.kind === "tall"));
+  const columns = base.placed.filter((p) => p.entry.kind === "tall" || (isSpace(p.item) && heldTall(p.item))).map((p) => ({ from: p.at, to: p.at + p.item.width, what: p.entry.name, bottom: 0, top: Infinity }));
   const high = g.wall ? rowStretches(g, g.wall, heights.wallBottom, heights.wallTop).flatMap(([a, b]) => freeStretches(columns, a, b, 0, 1)) : [];
   const highs = all.filter((i) => i.row === "wall");
   const wall = g.wall ? pack(high, highs, rest) : { placed: [], gaps: [], missing: highs };

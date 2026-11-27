@@ -16,6 +16,11 @@ import { el } from "../../ui/dom";
 import { kitchenFromPlan, type KitchenRoomInfo } from "../../document/kitchen-plan-build";
 import { findFeature } from "../../document/operations";
 import { withCaissonRemoved } from "../../document/kitchen-delete-sync";
+import { kitchenPlanIn, withKitchenBuilt } from "../../document/kitchen-floor";
+import type { DisplayUnit } from "../../document/types";
+
+/** The plan's casquette as the strip shows it: its kind, its height and its depth off the wall (mm), the display unit. */
+export type CapState = { kind: KitchenFloorPlan["cap"]; height?: number; depth?: number; unit: DisplayUnit };
 import { isolateSketch } from "../zone-view";
 import type { KitchenFloorPlan } from "../../document/types";
 import { furnishCabinet } from "../cabinet-furnish";
@@ -98,8 +103,18 @@ export async function furnishItem(editor: Editor, plan: KitchenFloorPlan, runId:
  * A caisson furnished by hand, chosen on the strip by the item keeping its room (`heldBy`: its sketch): isolated to be
  * changed in the 3D, or deleted, its room left free; not while the kitchen is about to be made again (`busy`).
  */
-export function caissonActions(editor: Editor, heldBy: (id: string) => string | undefined, busy: () => boolean, removed: () => void): { openCaisson(id: string): void; removeCaisson(id: string): void } {
+export function caissonActions(editor: Editor, heldBy: (id: string) => string | undefined, busy: () => boolean, removed: () => void, planId?: string): { openCaisson(id: string): void; removeCaisson(id: string): void; cap: CapState; setCap(patch: Partial<KitchenFloorPlan>): void } {
+  const plan = planId ? kitchenPlanIn(editor.doc, planId) : undefined;
   return {
+    // The plan's casquette (one for the whole kitchen), chosen on the strip: what it is, changed or taken away.
+    cap: { kind: plan?.cap, height: plan?.capHeight, depth: plan?.capDepth, unit: editor.unit },
+    setCap(patch) {
+      if (!planId) return;
+      if (busy()) return editor.notify("La cuisine est refaite dans un instant : recommencez ensuite.", "info");
+      const made = withKitchenBuilt(editor.doc, planId, patch);
+      if (typeof made === "string") return editor.notify(made, "error");
+      void editor.change(made.doc).then(removed);
+    },
     openCaisson(id) {
       const held = findFeature(editor.doc, heldBy(id) ?? "");
       if (held) isolateSketch(held.id, held.name);

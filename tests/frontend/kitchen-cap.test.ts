@@ -94,16 +94,16 @@ describe("casquette des meubles hauts", () => {
 describe("casquette en caissons à porte relevante (sur-meubles)", () => {
   const units = (p: KitchenFloorPlan) => kitchenFromPlan(p).units.filter((u) => u.name.startsWith("Casquette"));
 
-  it("un caisson par meuble haut, de sa largeur, 60 cm de profondeur (réglable), posé dessus ; pas sur la hotte ni sur une colonne, qui monte jusqu'en haut des caissons", () => {
+  it("un caisson par meuble haut, de sa largeur, 58 cm de profondeur comme les colonnes (réglable), posé dessus ; pas sur la hotte ni sur une colonne, qui monte jusqu'en haut des caissons", () => {
     const p = plan([["tall-colonne-rangement", 600], WALL, ["app-hood", 600], ["wall-haut-1-porte", 400]], { cap: "units" });
     const made = units(p);
     expect(made.map((u) => [u.width, u.height, u.layout, u.side])).toEqual([
       [600, 350, "door", "top"],
       [400, 350, "door", "top"],
     ]);
-    // On top of the wall row; 60 cm deep, or as set.
+    // On top of the wall row; 58 cm deep, or as set.
     expect(made.every((u) => Math.abs(u.origin[2] - TOP) < 1e-6)).toBe(true);
-    expect(made.map((u) => u.depth)).toEqual([600, 600]);
+    expect(made.map((u) => u.depth)).toEqual([580, 580]);
     expect(units({ ...p, capDepth: 450 }).map((u) => u.depth)).toEqual([450, 450]);
     // The column as high as the caissons' top; without the caissons, as the wall units' top.
     const column = (q: KitchenFloorPlan) => kitchenFromPlan(q).units.find((u) => u.name.startsWith("Colonne"))!;

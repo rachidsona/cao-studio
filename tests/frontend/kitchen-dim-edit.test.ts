@@ -31,7 +31,8 @@ describe("cotes tapées sur un linéaire vu seul", () => {
     expect(low.map((d) => d.edit?.kind ?? "rien")).toEqual(["rien", "corner", "item", "item", "rien"]);
     expect(low[0]!.b - low[0]!.a).toBe(100);
     expect(dims.find((d) => d.at === -330)!.edit).toEqual({ kind: "plan", key: "lengthA" });
-    expect(dims.filter((d) => d.axis === "z").map((d) => d.edit?.kind ?? "rien")).toEqual(["plan", "rien", "plan"]);
+    // Up: the worktop, the space under the wall units (typed: how high they hang), the wall row, what is left above it, the ceiling.
+    expect(dims.filter((d) => d.axis === "z").map((d) => d.edit?.kind ?? "rien")).toEqual(["plan", "plan", "rien", "plan", "rien"]);
   });
 
   it("la largeur d'un meuble : appliquée, refusée si elle ne tient plus (avec le plus large possible), un appareil garde ses largeurs", () => {

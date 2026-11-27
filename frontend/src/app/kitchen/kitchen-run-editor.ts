@@ -229,7 +229,7 @@ export class RunEditor {
     const appliances = handAppliances(editor.doc, this.host.plan, run);
     const off = plan.noWorktop?.[run.id] === true;
     // What is chosen on the strip, acted on from under it, by the keyboard or a right click.
-    const caisson = caissonActions(editor, (id) => this.items.find((i) => i.id === id)?.furnished, () => this.dirty, () => ((this.other = null), (this.focusStrip = true), this.host.redraw(), this.host.changed()));
+    const caisson = caissonActions(editor, (id) => this.items.find((i) => i.id === id)?.furnished, () => this.dirty, () => ((this.other = null), (this.focusStrip = true), this.host.redraw(), this.host.changed()), this.host.planId);
     const actions = stripActions({
       items: this.items, chosen: this.chosen, picked: this.picked, other: this.other, worktopOff: off, appliances,
       change: (items, chosen, picked) => ((this.focusStrip = true), this.change(items, chosen, picked ?? [])),

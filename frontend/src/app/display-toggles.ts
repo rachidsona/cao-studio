@@ -1,6 +1,6 @@
 /**
  * « Rayons X » dans la colonne Vue (les corps translucides, pour voir l'intérieur d'un meuble sans
- * rien cacher) et, dans la barre Modifier, le menu « Affichage » — une case par famille de corps (façades, carcasse, fonds, étagères, plinthes,
+ * rien cacher), « Cacher la pièce » (ses murs, son sol, son plafond) et, dans la barre Modifier, le menu « Affichage » — une case par famille de corps (façades, carcasse, fonds, étagères, plinthes,
  * pièce, électroménager, autres : document/display-families.ts), « Vue de travail » qui dégage l'intérieur d'un
  * clic (façades, murs et électroménager cachés) et « Tout afficher ». La vue seulement : le document, la liste de
  * débit et le devis n'en changent pas ; les choix sont gardés dans ce navigateur.
@@ -51,6 +51,7 @@ export function bindDisplayToggles(root: HTMLElement, viewport: Viewport, editor
     const visible = visibleByFamily(editor.doc, viewport.displayedBodies, hidden);
     for (const [id, on] of visible) viewport.setBodyVisible(id, on);
     menu?.setAttribute("aria-pressed", String(hidden.size > 0));
+    room?.setAttribute("aria-pressed", String(hidden.has("room")));
     for (const box of options?.querySelectorAll<HTMLInputElement>("[data-display-family]") ?? []) box.checked = !hidden.has(box.dataset.displayFamily as Family);
     try {
       localStorage.setItem(FAMILIES_KEY, JSON.stringify([...hidden]));
@@ -66,6 +67,13 @@ export function bindDisplayToggles(root: HTMLElement, viewport: Viewport, editor
       apply();
     });
   }
+  // « Cacher la pièce » in the view's column: the room's family (its walls, floor and ceiling) hidden or shown, as its box in the menu.
+  const room = root.querySelector<HTMLButtonElement>("[data-room-toggle]");
+  room?.addEventListener("click", () => {
+    if (hidden.has("room")) hidden.delete("room");
+    else hidden.add("room");
+    apply();
+  });
   options?.querySelector("[data-display-work]")?.addEventListener("click", () => {
     hidden.clear();
     for (const f of WORK_VIEW_HIDDEN) hidden.add(f);

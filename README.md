@@ -2717,7 +2717,15 @@ opération existante.
   Dans « Voir » un linéaire, un caisson aménagé a **sa propre cote** dans la chaîne du bas (ou du haut), comme un
   meuble (`runDims`) ; choisi, il est **entouré en laiton** sur la bande. **L'habillage de réfrigérateur a sa cote de
   hauteur**, à côté de lui : tapée (ou sa « Hauteur » dans « Meuble choisi »), ses côtés montent ou descendent et son
-  caisson du dessus prend ce qui reste au-dessus du réfrigérateur, aménagé ou non (`withSurroundHeight`).
+  caisson du dessus prend ce qui reste au-dessus du réfrigérateur, aménagé ou non (`withSurroundHeight`). **Chaque
+  colonne a sa cote de hauteur** de même, sur sa face (aménagée : son caisson refait à cette hauteur) ; à gauche, après
+  le plan de travail, **l'espace sous les hauts** (55 cm d'habitude ; tapé, ou « Entre le plan de travail et les hauts »
+  dans les Cotes du plan : `wallGap`, de 40 à 90 cm) et la rangée haute, **ce qui reste au-dessus d'elle jusqu'au
+  plafond**. Une colonne ou un habillage aménagés gardent la rangée haute libre au-dessus d'eux, comme une colonne :
+  un meuble haut n'y est plus posé. **La casquette se choisit sur la bande** d'un clic : sa sorte, sa hauteur, sa
+  profondeur (tapées, Entrée) et « Supprimer la casquette » (ou Suppr), pour toute la cuisine. Le bouton **« Cacher la
+  pièce et les murs »** de la colonne de la vue (groupe « Voir dedans ») cache ses murs, son sol et son plafond, comme
+  la case « Pièce (murs) » du menu Affichage.
   **Ses façades restent celles du meuble** : les façades de tiroirs en applique devant le caisson
   (`mount: "overlay"`), chacune à sa hauteur (`NicheFeature.shares`, comme `drawerShares` : deux tiroirs et un
   casserolier restent deux tiroirs et un casserolier), et les poignées percées sans être dessinées en volume, comme
@@ -2781,10 +2789,10 @@ opération existante.
     quand le plafond est trop bas (`document/kitchen-cap.ts`). **Caissons à porte relevante** (sur-meubles) : sur chaque
     meuble haut et chaque bras d'un meuble haut d'angle, droit ou en L (pas la hotte, un fileur ; pas une colonne ni
     l'habillage de réfrigérateur, qui montent eux-mêmes jusqu'en haut des caissons), un caisson de sa largeur,
-    de la « Profondeur des caissons » (60 cm d'habitude, de 30 à 80, contre le mur : il avance devant un haut de 35 ; celui d'un
+    de la « Profondeur des caissons » (58 cm d'habitude, comme les colonnes, de 30 à 80, contre le mur : il avance devant un haut de 35 ; celui d'un
     angle garde la profondeur des hauts, pour ne pas entrer dans l'autre mur), de la « Hauteur des caissons » choisie (35 cm d'habitude, de 25 à 60), sa porte se levant ; sous un
     plafond trop bas, pas de caisson là et un mot (`capUnits`). Pour poser un caisson à la main : « Casquette
-    relevante » (sur un meuble haut) et « Casquette sur colonne » (60 cm de profondeur toutes deux) dans les meubles hauts du
+    relevante » (sur un meuble haut) et « Casquette sur colonne » (58 cm de profondeur toutes deux, comme les colonnes) dans les meubles hauts du
     catalogue se posent **sur** le meuble choisi, à sa hauteur, le suivant à côté (`above` de `document/kitchen-catalog.ts`),
     même quand le projet a un Plan de cuisine ; choisies dans un linéaire du plan, elles mettent la casquette du plan en
     caissons à porte relevante, de leur hauteur et de leur profondeur (`capUnits` de `app/kitchen/kitchen-catalog-view.ts`).

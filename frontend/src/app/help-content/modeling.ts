@@ -389,6 +389,15 @@ export const MODELING: HelpFamily[] = [
         tip: "C'est le même réglage que la case « Murs qui cachent la vue masqués » du menu Affichage ; il est retenu par ce navigateur. La vue seule change.",
       },
       {
+        keys: [], selector: "[data-room-toggle]", name: "Cacher la pièce et les murs",
+        what: "Un bouton de la colonne à droite de la vue : enfoncé, les murs, le sol et le plafond de la pièce sont cachés, les meubles restent seuls ; relâché, la pièce revient.",
+        steps: [
+          "Cliquez le bouton (une pièce) dans la colonne à droite de la vue, groupe « Voir dedans » : les murs, le sol et le plafond disparaissent.",
+          "Cliquez-le de nouveau : la pièce revient.",
+        ],
+        tip: "C'est la même chose que décocher « Pièce (murs) » dans le menu Affichage ; c'est retenu par ce navigateur. La vue seule change : rien n'est supprimé.",
+      },
+      {
         keys: [], selector: "[data-display-menu]", name: "Affichage par famille",
         what: "Cache ou montre des familles de corps : façades, carcasse, fonds, étagères, plinthes, murs, électroménager.",
         steps: [

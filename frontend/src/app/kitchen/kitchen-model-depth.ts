@@ -51,5 +51,5 @@ export function depthChoice(redraw: () => void): HTMLElement {
 export function caissonsChoice(on: boolean, set: (on: boolean) => void): HTMLElement {
   const box = el("input", { type: "checkbox", checked: on, "data-run-as-caissons": "" });
   box.addEventListener("change", () => set(box.checked));
-  return el("label", { class: "flex items-center gap-2 py-1.5 text-xs text-gray-600 dark:text-gray-300" }, box, "Caissons en Répartition (réglés comme au dressing)");
+  return el("label", { class: "flex items-center gap-2 py-1.5 text-xs text-gray-600 dark:text-gray-300" }, box, "Caissons en Répartition");
 }

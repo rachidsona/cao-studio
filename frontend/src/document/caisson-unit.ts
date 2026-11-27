@@ -78,9 +78,9 @@ export function withCaissonUnfurnished(doc: CadDocument, sketchId: string): Made
 }
 
 /**
- * A fridge's surround made to this height (mm): its sides and its caisson on top, the fridge under it kept as high as
- * it is (20 cm of caisson at least). Furnished (its caisson a Répartition), that caisson made again to the room left
- * over the fridge.
+ * A column or a fridge's surround made to this height (mm). A surround: its sides and its caisson on top, the fridge
+ * under it kept as high as it is (20 cm of caisson at least); furnished (its caisson a Répartition), that caisson made
+ * again to the room left over the fridge. A column furnished: its caisson made to that height.
  */
 export function withSurroundHeight(doc: CadDocument, planId: string, run: string, itemId: string, mm: number): Made {
   const plan = kitchenPlanIn(doc, planId);
@@ -88,10 +88,14 @@ export function withSurroundHeight(doc: CadDocument, planId: string, run: string
   const item = items.find((i) => i.id === itemId);
   if (!plan || !item) return "Ce meuble n'est plus sur le linéaire.";
   const surround = { ...item, model: item.furnished ? (item.from ?? item.model) : item.model };
-  if (applianceOf(surround)?.role !== "fridge-surround") return "Seul l'habillage de réfrigérateur se règle ainsi en hauteur.";
-  const [lo, hi] = sizeLimits(plan, itemEntry(surround)).height ?? [0, 0];
+  const entry = itemEntry(surround);
+  const fridge = applianceOf(surround)?.role === "fridge-surround";
+  if (!fridge && entry.kind !== "tall") return "Seuls une colonne et l'habillage de réfrigérateur se règlent ainsi en hauteur.";
+  const [lo, hi] = sizeLimits(plan, entry).height ?? [0, 0];
   const height = Math.round(mm * 10) / 10;
-  if (!(height >= lo && height <= hi)) return `La hauteur de l'habillage va de ${lo / 10} à ${hi / 10} cm.`;
+  if (!(height >= lo && height <= hi)) return `La hauteur ${fridge ? "de l'habillage" : "de la colonne"} va de ${lo / 10} à ${hi / 10} cm.`;
+  // A column made a caisson (a Répartition): that caisson made to this height, from the floor.
+  if (!fridge && item.furnished) return withCaissonSized(doc, item.furnished, { height });
   const built = withKitchenBuilt(doc, planId, { runs: { ...plan.runs, [run]: items.map((i) => (i.id === itemId ? { ...i, height } : i)) } });
   if (typeof built === "string" || !item.furnished) return built;
   // Its caisson: from over the fridge, with its air, up to the top.

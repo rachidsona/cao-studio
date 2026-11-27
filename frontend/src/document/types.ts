@@ -208,6 +208,8 @@ export interface KitchenFloorPlan {
   /** The base units' and columns' caissons off the wall (mm), 58 cm when missing (no deeper than the worktop less the fronts). */
   baseDepth?: number;
   wallDepth: number;
+  /** Between the worktop and the bottom of the wall units (mm), 55 cm when missing. */
+  wallGap?: number;
   worktopHeight: number;
   /** Square corners where the other run passes: B or C (or the peninsula) past wall A. */
   through?: Partial<Record<"left" | "right", boolean>>;
@@ -253,7 +255,7 @@ export interface KitchenFloorPlan {
   cap?: "flat" | "box" | "units";
   capThickness?: number;
   capHeight?: number;
-  /** Caissons with lift-up doors (« units »): their depth off the wall (mm), 60 cm when missing. A plain or caisson casquette: its depth off the wall, the same everywhere (missing or 0: each unit's under it, plus the overhang). */
+  /** Caissons with lift-up doors (« units »): their depth off the wall (mm), 58 cm when missing (as the columns). A plain or caisson casquette: its depth off the wall, the same everywhere (missing or 0: each unit's under it, plus the overhang). */
   capDepth?: number;
   capOverhang?: number;
   /** The walls it draws behind its runs (no surveyed room) left out: « Murs de la pièce » unticked (document/kitchen-walls.ts). */

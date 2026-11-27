@@ -71,9 +71,9 @@ test("Meubles de cuisine, avec un Plan de cuisine : la casquette se pose sur le 
   const cabinets = (project.document.features as Cab[]).filter((f) => f.type === "cabinet");
   const unit = cabinets.find((c) => c.name === "Haut 1 porte 600 (A1)")!;
   const cap = cabinets.find((c) => c.name.startsWith("Casquette relevante 600"))!;
-  // 60 cm deep, its back against the wall unit's: it comes out in front of it.
-  expect(cap.depth).toBe(600);
-  expect(cap.origin).toEqual([unit.origin[0], unit.origin[1]! - (600 - unit.depth), unit.origin[2]! + unit.height]);
+  // 58 cm deep (as a column), its back against the wall unit's: it comes out in front of it.
+  expect(cap.depth).toBe(580);
+  expect(cap.origin).toEqual([unit.origin[0], unit.origin[1]! - (580 - unit.depth), unit.origin[2]! + unit.height]);
   expect(errors).toEqual([]);
 });
 
@@ -458,5 +458,43 @@ test("plan de cuisine : la hauteur de l'habillage a sa cote dans « Voir », tap
   await field.press("Enter");
   await expect(heights.filter({ hasText: /^240$/ })).toHaveCount(1, { timeout: 30_000 });
   await expect(heights.filter({ hasText: /^250$/ })).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+test("sur la bande : la casquette se choisit d'un clic — sa sorte, sa hauteur, sa profondeur, et Supprimer", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-casquette-bande");
+  const click = (s: string) => page.evaluate((x) => document.querySelector<HTMLElement>(x)?.click(), s);
+  await click('[data-ribbon-tab="kitchen"]');
+  await click('[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await wallsOnly(tool);
+  await openCard(tool, "Matières et finitions");
+  await tool.locator("[data-plan-cap]").selectOption("box");
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  const head = tool.locator('[data-fold="add"]');
+  if ((await head.getAttribute("aria-expanded")) !== "true") await head.click();
+  await tool.getByRole("tab", { name: "Hauts" }).click();
+  await tool.locator('[data-add="wall-haut-1-porte-600"]').click();
+  const names = async () => (await page.evaluate(() => document.body.innerText)).split("\n");
+  await expect.poll(async () => (await names()).filter((l) => /^Bandeau de casquette A/.test(l)).length).toBe(1);
+  // Chosen on the strip: outlined, its settings under the strip.
+  await page.evaluate(() => document.querySelector<SVGElement>('[data-run-strip="A"] [data-cap-strip]')?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  const bar = tool.locator("[data-strip-actions]");
+  await expect(bar).toContainText("Casquette des meubles hauts");
+  await expect(bar.locator("[data-strip-cap-kind]")).toHaveValue("box");
+  await expect(tool.locator('[data-run-strip="A"] [data-cap-strip][stroke]')).not.toHaveCount(0);
+  // 58 cm deep: the whole casquette.
+  const depth = bar.locator("[data-strip-capDepth]");
+  await depth.fill((await depth.getAttribute("aria-label"))?.includes("(mm)") ? "580" : "58");
+  await depth.press("Enter");
+  await expect.poll(async () => (await names()).filter((l) => /^Bandeau de casquette A/.test(l)).length).toBe(1);
+  // Deleted (the button, or Suppr): no casquette left.
+  await page.evaluate(() => document.querySelector<SVGElement>('[data-run-strip="A"] [data-cap-strip]')?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  await tool.locator("[data-strip-actions]").getByRole("button", { name: "Supprimer la casquette" }).click();
+  await expect.poll(async () => (await names()).filter((l) => /^(Casquette|Bandeau de casquette|Bout de casquette) [A-Z]/.test(l)).length).toBe(0);
   expect(errors).toEqual([]);
 });

@@ -92,7 +92,7 @@ export interface StripHost {
 }
 
 /** What else than a unit is chosen on the strip; a caisson furnished by hand by the item that keeps its room. */
-export type StripOther = { kind: "appliance"; id: string } | { kind: "worktop" } | { kind: "kick" } | { kind: "caisson"; id: string } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall" };
+export type StripOther = { kind: "appliance"; id: string } | { kind: "worktop" } | { kind: "cap" } | { kind: "kick" } | { kind: "caisson"; id: string } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall" };
 
 export type StripEdit = { kind: "item"; id: string; width: number } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall"; width: number };
 
@@ -190,6 +190,10 @@ export function runStrip(host: StripHost): SVGSVGElement {
         return `${along(q)},${y(z)}`;
       });
       parts.push(`<polygon points="${pts.join(" ")}" class="${tone}" vector-effect="non-scaling-stroke" data-finish="${finish}" pointer-events="none"/>`);
+    } else if (finish === "cap" && host.pickOther) {
+      // The casquette: clicked, chosen (its settings and its deletion under the strip); outlined while it is.
+      const on = host.other?.kind === "cap";
+      parts.push(rect(u0, y(z1), u1 - u0, z1 - z0, `${tone} cursor-pointer`, `data-finish="cap" data-cap-strip=""${on ? ` stroke="${BRASS}" stroke-width="3"` : ""}`).replace("/>", "><title>Casquette : cliquer pour la choisir</title></rect>"));
     } else parts.push(rect(u0, y(z1), u1 - u0, z1 - z0, tone, `data-finish="${finish}" pointer-events="none"`));
   }
   // The worktop, over the units only; clicked (a band taller than it takes the click), it is chosen.
@@ -290,6 +294,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     node.append(shape);
   }
   for (const top of node.querySelectorAll<SVGElement>("[data-worktop]")) top.addEventListener("click", () => host.pickOther?.({ kind: "worktop" }));
+  for (const cap of node.querySelectorAll<SVGElement>("[data-cap-strip]")) cap.addEventListener("click", () => host.pickOther?.({ kind: "cap" }));
   // A caisson furnished by hand: clicked, chosen; dragged, moved as a unit is.
   for (const held of node.querySelectorAll<SVGGElement>("[data-held]")) {
     const pl = fill.spaces.find((q) => q.item.id === held.getAttribute("data-held"))!;

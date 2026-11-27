@@ -495,7 +495,7 @@ test("plan de cuisine : « Voir » isole un linéaire, de face, avec ses cotes ;
   // Its dimensions: the widths along the bottom, the wall's length, the heights.
   await expect(page.locator('[data-run-dim="u"]').first()).toBeVisible();
   expect(await page.locator('[data-run-dim="u"]').count()).toBeGreaterThan(6);
-  expect(await page.locator('[data-run-dim="z"]').count()).toBe(3);
+  expect(await page.locator('[data-run-dim="z"]').count()).toBeGreaterThanOrEqual(5);
   await shot(page, "16-voir-mur-a");
   // A width typed on its dimension: the unit takes it, the kitchen is made again, the run stays alone.
   const width = page.locator('[data-run-dim="u"][data-editable]').filter({ hasText: /^60$/ }).first();
@@ -1060,5 +1060,41 @@ test("plan de cuisine : sa pièce fermée d'office (murs, sol, plafond), vue de 
   await click(page, '[data-view="top"]');
   await expect(canvas).toHaveAttribute("data-flats-cut", "1");
   await shot(page, "25-piece-dessus");
+  expect(errors).toEqual([]);
+});
+
+test("plan de cuisine : « Cacher la pièce et les murs » dans la colonne de la vue ; l'espace sous les hauts réglé à 60 cm", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-cacher-piece");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await openCard(tool, "Cotes");
+  const gap = tool.getByLabel("Entre le plan de travail et les hauts", { exact: false }).first();
+  await expect(gap).toHaveValue("55");
+  await gap.fill("60");
+  await gap.press("Enter");
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await expect.poll(async () => (await tree(page)).split("\n").filter((l) => /^(Sol|Plafond)$/.test(l)).length).toBe(2);
+  // The room hidden, then shown: the same choice as the « Pièce (murs) » box of the Affichage menu.
+  const button = page.locator("[data-room-toggle]");
+  await expect(button).toHaveAttribute("aria-pressed", "false");
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-display-family="room"]')).not.toBeChecked();
+  await shot(page, "26-piece-cachee");
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator('[data-display-family="room"]')).toBeChecked();
+  // A wall unit added: seen alone, 60 cm between the worktop and it.
+  await tool.locator('[data-open-run="A"]').click();
+  await unfold(tool, "add");
+  await tool.getByRole("tab", { name: "Hauts" }).click();
+  await tool.locator('[data-add="wall-haut-1-porte-600"]').click();
+  await tool.locator("[data-run-close]").click();
+  await tool.locator('[data-see-run="A"]').click();
+  await expect(page.locator('[data-run-dim="z"][data-editable]').filter({ hasText: /^60$/ })).toHaveCount(1);
   expect(errors).toEqual([]);
 });

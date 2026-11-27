@@ -122,20 +122,20 @@ describe("meubles de cuisine", () => {
 });
 
 describe("caissons de casquette (sur-meubles)", () => {
-  it("posés sur le meuble haut choisi, sa porte relevante, 60 cm de profondeur contre le mur ; le suivant à côté ; sur une colonne aussi", async () => {
+  it("posés sur le meuble haut choisi, sa porte relevante, 58 cm de profondeur contre le mur (comme une colonne) ; le suivant à côté ; sur une colonne aussi", async () => {
     const { KINDS } = await import("../../frontend/src/document/kitchen-catalog");
     const top = KINDS.wall.z + KINDS.wall.height;
     const wall = addKitchenUnit(createReferencePlate(), entry("wall-haut-1-porte-600"));
     const cap = addKitchenUnit(wall.doc, entry("wall-casquette-relevante-600"), wall.cabinet.id);
-    // 60 cm deep, its back against the wall unit's: it comes 25 cm further out.
-    const out = (c: typeof wall.cabinet) => c.origin[1] - (600 - c.depth);
-    expect(cap.cabinet).toMatchObject({ width: 600, height: 350, depth: 600, origin: [wall.cabinet.origin[0], out(wall.cabinet), top] });
+    // 58 cm deep, its back against the wall unit's: it comes 23 cm further out.
+    const out = (c: typeof wall.cabinet) => c.origin[1] - (580 - c.depth);
+    expect(cap.cabinet).toMatchObject({ width: 600, height: 350, depth: 580, origin: [wall.cabinet.origin[0], out(wall.cabinet), top] });
     expect(cap.fronts).toMatchObject({ layout: "door", side: "top" });
     const next = addKitchenUnit(cap.doc, entry("wall-casquette-relevante-400"), cap.cabinet.id);
     expect(next.cabinet.origin).toEqual([600, out(wall.cabinet), top]);
     const column = addKitchenUnit(createReferencePlate(), entry("tall-colonne-rangement-600"));
     const over = addKitchenUnit(column.doc, entry("wall-casquette-sur-colonne-600"), column.cabinet.id);
-    expect(over.cabinet).toMatchObject({ depth: 600, origin: [column.cabinet.origin[0], out(column.cabinet), top] });
+    expect(over.cabinet).toMatchObject({ depth: 580, origin: [column.cabinet.origin[0], out(column.cabinet), top] });
   });
 
   it("sur un meuble haut d'une autre hauteur (celui d'un Plan de cuisine) : posée sur son dessus", () => {
@@ -144,7 +144,7 @@ describe("caissons de casquette (sur-meubles)", () => {
     const doc = { ...wall.doc, features: wall.doc.features.map((f) => (f.id === high.id ? high : f)) };
     const cap = addKitchenUnit(doc, entry("wall-casquette-relevante-600"), high.id);
     expect(cap.cabinet.origin[2]).toBe(2350);
-    expect(addKitchenUnit(cap.doc, entry("wall-casquette-relevante-400"), cap.cabinet.id).cabinet.origin).toEqual([600, -250, 2350]);
+    expect(addKitchenUnit(cap.doc, entry("wall-casquette-relevante-400"), cap.cabinet.id).cabinet.origin).toEqual([600, -230, 2350]);
   });
 
   it("le Plan de cuisine ne les propose pas dans ses rangées : il a sa casquette en caissons", async () => {

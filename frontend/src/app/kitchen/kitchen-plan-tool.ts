@@ -16,7 +16,7 @@ import { kitchenFromPlan } from "../../document/kitchen-plan-build";
 import { kitchenMarks, kitchenRoomInfo, linkedKitchen, unlinkedKitchen } from "../../document/kitchen-plan-room";
 import { planOnRoom } from "../../document/kitchen-room-fix";
 import { CORNER_KINDS, type CornerSetting } from "../../document/kitchen-corners";
-import { BASE_DEPTH, cornerKind, KITCHEN_MODELS, KITCHEN_PLAN, kitchenJoints, type CornerKind, kitchenPlanProblem, kitchenRuns, runGeometry, type KitchenField, type KitchenModel, type KitchenRun } from "../../document/kitchen-plan-shapes";
+import { BASE_DEPTH, cornerKind, KITCHEN_MODELS, WALL_GAP, KITCHEN_PLAN, kitchenJoints, type CornerKind, kitchenPlanProblem, kitchenRuns, runGeometry, type KitchenField, type KitchenModel, type KitchenRun } from "../../document/kitchen-plan-shapes";
 import { proposeKitchen } from "../../document/kitchen-propose";
 import type { CatalogEntry } from "../../document/kitchen-catalog";
 import { frontChoices, MATERIALS } from "../../document/materials"; import { frontFields } from "./kitchen-front-fields";
@@ -215,7 +215,7 @@ export class KitchenPlanTool {
       ...(Object.entries(model.fields) as [KitchenField, string][]).filter(([key]) => !plan.room || key === "lengthD" || key === "aisle").map(([key, label]) => this.fields.number(label, key)),
       plan.room ? null : this.fields.number("Hauteur sous plafond", "height"),
       this.fields.number("Profondeur du plan de travail", "depth"), this.fields.number("Profondeur des caissons bas", "baseDepth", BASE_DEPTH),
-      this.fields.number("Profondeur des hauts", "wallDepth"),
+      this.fields.number("Profondeur des hauts", "wallDepth"), this.fields.number("Entre le plan de travail et les hauts", "wallGap", WALL_GAP),
       this.fields.number("Hauteur du plan de travail", "worktopHeight"),
       this.fields.number("Épaisseur du plan de travail", "worktopThickness"),
       this.fields.number("Socle", "plinth"),
@@ -223,7 +223,7 @@ export class KitchenPlanTool {
       islandRows ? this.fields.number("Passage devant l'îlot", "passage") : null,
       islandRows ? this.fields.number("Longueur de l'îlot", "islandLength") : null,
       islandRows ? this.fields.number("Profondeur de l'îlot", "islandDepth") : null, islandRows ? this.fields.number("Décalage de l'îlot (0 : au milieu du mur A)", "islandShift", 0, true, true) : null,
-      el("h3", { class: "panel-title" }, "Façades"), this.fields.select("Matière des façades", plan.frontMaterial ?? "lacquer-white", frontChoices(plan.frontMaterial), (v) => this.set({ frontMaterial: v })), ...frontFields(plan, this.editor.unit, (patch) => this.set(patch)), this.fields.check("Caissons en Répartition (réglés comme au dressing)", "asCaissons"), el("h3", { class: "panel-title" }, "Matières et finitions"),
+      el("h3", { class: "panel-title" }, "Façades"), this.fields.select("Matière des façades", plan.frontMaterial ?? "lacquer-white", frontChoices(plan.frontMaterial), (v) => this.set({ frontMaterial: v })), ...frontFields(plan, this.editor.unit, (patch) => this.set(patch)), this.fields.check("Caissons en Répartition", "asCaissons"), el("h3", { class: "panel-title" }, "Matières et finitions"),
       this.fields.look(materials),
       this.fields.check("Crédence", "splashback"), plan.splashback !== false ? this.fields.check("Crédence seulement sous la hotte", "splashbackHoodOnly") : null,
       this.fields.check("Plinthes", "kick"), this.fields.check("Joues de finition aux bouts libres (colonnes, meubles hauts)", "endPanels"), ...this.fields.cap(),

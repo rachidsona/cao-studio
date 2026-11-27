@@ -1,7 +1,7 @@
 /** Les cotes d'un linéaire vu seul : la chaîne des largeurs en bas, celle des hauts, la longueur du mur, les hauteurs. */
 import { describe, expect, it } from "vitest";
 import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
-import { KITCHEN_PLAN, kitchenRuns, kitchenSizes, runGeometry } from "../../frontend/src/document/kitchen-plan-shapes";
+import { KITCHEN_PLAN, kitchenPlanProblem, kitchenRuns, kitchenSizes, runGeometry } from "../../frontend/src/document/kitchen-plan-shapes";
 import { proposeKitchen } from "../../frontend/src/document/kitchen-propose";
 import { runDims } from "../../frontend/src/document/kitchen-run-dims";
 import type { KitchenFloorPlan } from "../../frontend/src/document/types";
@@ -20,7 +20,16 @@ describe("cotes d'un linéaire de cuisine", () => {
     expect(dims.find((d) => d.at === -330)).toEqual({ axis: "u", a: 0, b: 3600, at: -330, edit: { kind: "plan", key: "lengthA" } });
     const s = kitchenSizes(p);
     expect(dims.filter((d) => d.axis === "u" && d.at === s.wallTop + 150).length).toBeGreaterThan(2);
-    expect(dims.filter((d) => d.axis === "z").map((d) => [d.a, d.b])).toEqual([[0, p.worktopHeight], [s.wallBottom, s.wallTop], [0, p.height]]);
+    // Up: the worktop, the gap, the wall row, the ceiling, what is left over the wall row up to it; then each column's height, over it.
+    const cols = runDims(p, run, g, kitchenFromPlan(p).fills.A!).filter((d) => d.edit?.kind === "height");
+    expect(dims.filter((d) => d.axis === "z" && d.edit?.kind !== "height").map((d) => [d.a, d.b])).toEqual([[0, p.worktopHeight], [p.worktopHeight, s.wallBottom], [s.wallBottom, s.wallTop], [0, p.height], [s.wallTop, p.height]]);
+    expect(cols.every((d) => d.axis === "z" && d.a === 0 && d.b > p.worktopHeight)).toBe(true);
+    // Between the worktop and the wall units: typed, the plan's « wallGap » (55 cm when not set; 60 here).
+    expect(dims.find((d) => d.axis === "z" && d.a === p.worktopHeight)?.edit).toEqual({ kind: "plan", key: "wallGap" });
+    expect(s.wallBottom - p.worktopHeight).toBe(550);
+    expect(kitchenSizes({ ...p, wallGap: 600 }).wallBottom).toBe(p.worktopHeight + 600);
+    expect(kitchenSizes({ ...p, wallGap: 600 }).wallTop).toBe(p.worktopHeight + 600 + 700);
+    expect(kitchenPlanProblem({ ...p, wallGap: 300 })).toMatch(/40 à 90 cm/);
   });
 
   it("un caisson aménagé dans sa place gardée a sa propre cote, comme un meuble ; la place restée libre a la sienne", () => {

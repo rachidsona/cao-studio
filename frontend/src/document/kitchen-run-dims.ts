@@ -14,10 +14,10 @@ import { applianceOf, heldUnits, itemSize, openRoom, type RunFill } from "../fea
 /** What typing a dimension changes: a unit's width; a corner's size (the value less `less`); a size of the plan. */
 export type DimEdit =
   | { kind: "item"; item: string }
-  /** A fridge's surround: its height. */
+  /** A column or a fridge's surround: its height. */
   | { kind: "height"; item: string }
   | { kind: "corner"; joint: Joint; key: "door" | "arm" | "wallDoor" | "wallArm"; less: number }
-  | { kind: "plan"; key: "lengthA" | "lengthB" | "lengthC" | "lengthD" | "islandLength" | "worktopHeight" | "height" };
+  | { kind: "plan"; key: "lengthA" | "lengthB" | "lengthC" | "lengthD" | "islandLength" | "worktopHeight" | "height" | "wallGap" };
 
 /** A dimension: along the run (`u`, at the height `at`) or up it (`z`, at `at` along it), from `a` to `b`. */
 export interface RunDim {
@@ -79,9 +79,15 @@ export function runDims(p: KitchenFloorPlan, run: KitchenRun, g: RunGeometry, fi
   out.push({ axis: "u", a: 0, b: run.length, at: -330, ...own(lengthKey(run)) });
   if (g.wall) for (const { span: [a, b], edit } of chain(high)) out.push({ axis: "u", a, b, at: s.wallTop + 150, ...(edit ? { edit } : {}) });
   out.push({ axis: "z", a: 0, b: p.worktopHeight, at: -180, ...own("worktopHeight") });
-  if (g.wall && high.length) out.push({ axis: "z", a: s.wallBottom, b: s.wallTop, at: -180 });
+  // Between the worktop and the wall units: typed, it sets how high they hang.
+  if (g.wall && high.length) out.push({ axis: "z", a: p.worktopHeight, b: s.wallBottom, at: -180, edit: { kind: "plan", key: "wallGap" } }, { axis: "z", a: s.wallBottom, b: s.wallTop, at: -180 });
   if (run.wall) out.push({ axis: "z", a: 0, b: p.height, at: -380, ...own("height") });
-  // A fridge's surround, furnished or not: its height, beside it, to be typed.
-  for (const pl of [...fill.placed, ...heldUnits(fill)].filter((x) => applianceOf(x.item)?.role === "fridge-surround")) out.push({ axis: "z", a: 0, b: itemSize(p, pl.item, pl.entry).height, at: pl.at + pl.item.width + 150, edit: { kind: "height", item: pl.item.id } });
+  // The room left over the wall row, up to the ceiling (nothing made there).
+  if (run.wall && g.wall && high.length && p.height - s.wallTop >= 1) out.push({ axis: "z", a: s.wallTop, b: p.height, at: -180 });
+  // Each column and fridge's surround, furnished or not: its height, over its face (a surround's beside it), to be typed.
+  for (const pl of [...fill.placed, ...heldUnits(fill)].filter((x) => x.row === "base" && x.entry.kind === "tall")) {
+    const surround = applianceOf(pl.item)?.role === "fridge-surround";
+    out.push({ axis: "z", a: 0, b: itemSize(p, pl.item, pl.entry).height, at: surround ? pl.at + pl.item.width + 150 : pl.at + pl.item.width / 2, edit: { kind: "height", item: pl.item.id } });
+  }
   return out;
 }
