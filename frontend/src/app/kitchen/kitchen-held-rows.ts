@@ -3,7 +3,7 @@
  * largeur, sa hauteur (en haut) et sa profondeur — sa Répartition refaite à ces cotes, son intérieur adapté —, et
  * « Modifier dans la 3D » ; ou « Remettre le meuble d'origine », le meuble du catalogue qu'il était (document/caisson-unit.ts).
  */
-import { caissonSizes, heldModel, withCaissonSized, withCaissonUnfurnished } from "../../document/caisson-unit";
+import { caissonSizes, held, heldModel, withCaissonSized, withCaissonUnfurnished, withSurroundHeight } from "../../document/caisson-unit";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../document/types";
 import { itemEntry, itemSize } from "../../features/kitchen-run-items";
 import { el } from "../../ui/dom";
@@ -37,7 +37,7 @@ export function heldRows(host: HeldHost): HTMLElement {
   const sketch = item.furnished!;
   const now = caissonSizes(doc, sketch);
   // Its sizes, as a unit of the model it was has them.
-  const unit: KitchenRunItem = { id: item.id, model: heldModel(doc, item), width: item.width, ...(item.fridge ? { fridge: item.fridge } : {}) };
+  const unit: KitchenRunItem = { id: item.id, model: heldModel(doc, item), width: item.width, ...(item.fridge ? { fridge: item.fridge } : {}), ...(item.height ? { height: item.height } : {}) };
   const entry = itemEntry(unit);
   const apply = (made: ReturnType<typeof withCaissonSized>) => {
     if (typeof made === "string") return editor.notify(made, "error");
@@ -48,6 +48,9 @@ export function heldRows(host: HeldHost): HTMLElement {
   const replace = (patch: Partial<KitchenRunItem>) => {
     if (patch.width !== undefined) return host.width(patch.width);
     if (wait()) return;
+    // A fridge's surround: all of it to that height, its caisson on top following.
+    const at = patch.height !== undefined && entry.kind === "tall" ? held(editor.doc, sketch) : null;
+    if (at) return apply(withSurroundHeight(editor.doc, at.planId, at.run, at.item.id, patch.height ?? itemSize(host.plan, unit, entry).height));
     // « Cotes du modèle »: those of the unit it was.
     const model = itemSize(host.plan, unit, entry);
     const height = "height" in patch ? (patch.height ?? model.height) : undefined;

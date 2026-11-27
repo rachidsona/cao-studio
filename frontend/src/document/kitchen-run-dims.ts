@@ -9,11 +9,13 @@
 import { cornerSide, wallCornerSide } from "./kitchen-corners";
 import { CORNER_WALL_GAP, jointOf, kitchenSizes, wallCorner, type Joint, type KitchenRun, type RunGeometry } from "./kitchen-plan-shapes";
 import type { KitchenFloorPlan } from "./types";
-import { openRoom, type RunFill } from "../features/kitchen-run-items";
+import { applianceOf, heldUnits, itemSize, openRoom, type RunFill } from "../features/kitchen-run-items";
 
 /** What typing a dimension changes: a unit's width; a corner's size (the value less `less`); a size of the plan. */
 export type DimEdit =
   | { kind: "item"; item: string }
+  /** A fridge's surround: its height. */
+  | { kind: "height"; item: string }
   | { kind: "corner"; joint: Joint; key: "door" | "arm" | "wallDoor" | "wallArm"; less: number }
   | { kind: "plan"; key: "lengthA" | "lengthB" | "lengthC" | "lengthD" | "islandLength" | "worktopHeight" | "height" };
 
@@ -79,5 +81,7 @@ export function runDims(p: KitchenFloorPlan, run: KitchenRun, g: RunGeometry, fi
   out.push({ axis: "z", a: 0, b: p.worktopHeight, at: -180, ...own("worktopHeight") });
   if (g.wall && high.length) out.push({ axis: "z", a: s.wallBottom, b: s.wallTop, at: -180 });
   if (run.wall) out.push({ axis: "z", a: 0, b: p.height, at: -380, ...own("height") });
+  // A fridge's surround, furnished or not: its height, beside it, to be typed.
+  for (const pl of [...fill.placed, ...heldUnits(fill)].filter((x) => applianceOf(x.item)?.role === "fridge-surround")) out.push({ axis: "z", a: 0, b: itemSize(p, pl.item, pl.entry).height, at: pl.at + pl.item.width + 150, edit: { kind: "height", item: pl.item.id } });
   return out;
 }

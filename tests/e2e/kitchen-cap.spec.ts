@@ -1,6 +1,6 @@
 /** La casquette des meubles hauts du Plan de cuisine dans un vrai navigateur : choisie, bâtie par le noyau, dessinée sur la bande. */
 import { expect, test } from "@playwright/test";
-import { newProject, openCard } from "./helpers";
+import { newProject, openCard, wallsOnly } from "./helpers";
 
 test("plan de cuisine : une casquette en caisson sur les meubles hauts", async ({ page }) => {
   const errors: string[] = [];
@@ -429,5 +429,34 @@ test("plan de cuisine : un meuble cliqué dans la 3D s'ouvre sous « Meuble choi
   const view = (await page.locator("canvas").first().boundingBox())!;
   await page.mouse.click(view.x + view.width * 0.47, view.y + view.height * 0.4);
   await expect(tool.locator('[data-fold="chosen"]')).toContainText(/Meuble choisi : Habillage/, { timeout: 15_000 });
+  expect(errors).toEqual([]);
+});
+
+test("plan de cuisine : la hauteur de l'habillage a sa cote dans « Voir », tapée elle refait l'habillage", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await newProject(page, "zz-test-hauteur-habillage");
+  const click = (s: string) => page.evaluate((x) => document.querySelector<HTMLElement>(x)?.click(), s);
+  await click('[data-ribbon-tab="kitchen"]');
+  await click('[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "Droite (I)", exact: true }).click();
+  await wallsOnly(tool);
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  const head = tool.locator('[data-fold="add"]');
+  if ((await head.getAttribute("aria-expanded")) !== "true") await head.click();
+  await tool.getByRole("tab", { name: "Colonnes" }).click();
+  await tool.locator('[data-add^="app-fridge-surround-"]').first().click();
+  await tool.locator("[data-run-close]").click();
+  await tool.locator('[data-see-run="A"]').click();
+  // Beside it, its height (230 cm), to be typed; the ceiling (250 cm) has its own.
+  const heights = page.locator('[data-run-dim="z"][data-editable]');
+  await heights.filter({ hasText: /^230$/ }).click();
+  const field = page.locator("[data-dim-editor]");
+  await field.fill("240");
+  await field.press("Enter");
+  await expect(heights.filter({ hasText: /^240$/ })).toHaveCount(1, { timeout: 30_000 });
+  await expect(heights.filter({ hasText: /^250$/ })).toHaveCount(1);
   expect(errors).toEqual([]);
 });

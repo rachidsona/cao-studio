@@ -4,6 +4,7 @@
  * limites, une longueur ou une hauteur du plan, qui le fait suivre. La cuisine est refaite d'un coup ; une chaîne :
  * pourquoi c'est refusé. Pur.
  */
+import { withSurroundHeight } from "./caisson-unit";
 import { cornerLimits, withCorner } from "./kitchen-corners";
 import { kitchenPlanIn, withKitchenBuilt, withKitchenChanged } from "./kitchen-floor";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
@@ -32,6 +33,10 @@ export function withRunDim(doc: CadDocument, planId: string, runId: string, edit
     const [lo, hi] = cornerLimits(plan)[edit.key];
     if (!(size >= lo && size <= hi)) return `Cette cote va de ${cm(lo + edit.less)} à ${cm(hi + edit.less)}.`;
     const made = withKitchenBuilt(doc, planId, withCorner(plan, edit.joint, { [edit.key]: size }));
+    return typeof made === "string" ? made : made.doc;
+  }
+  if (edit.kind === "height") {
+    const made = withSurroundHeight(doc, planId, run.id, edit.item, value);
     return typeof made === "string" ? made : made.doc;
   }
   const items = plan.runs?.[run.id] ?? [];

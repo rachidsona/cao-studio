@@ -145,6 +145,43 @@ describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
     expect(again.type === "appliance" && again.height).toBe(1800);
   });
 
+  it("la hauteur de l'habillage se tape (sa cote dans « Voir », ou « Meuble choisi ») : ses côtés et son caisson suivent, aménagé ou non", async () => {
+    const { withCabinetFurnished } = await import("../../frontend/src/document/cabinet-furnish");
+    const { withSurroundHeight } = await import("../../frontend/src/document/caisson-unit");
+    const { runDims } = await import("../../frontend/src/document/kitchen-run-dims");
+    const { kitchenFromPlan } = await import("../../frontend/src/document/kitchen-plan-build");
+    const { kitchenRuns, runGeometry } = await import("../../frontend/src/document/kitchen-plan-shapes");
+    const { partitionOf } = await import("../../frontend/src/document/caisson-follow");
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, height: 3000, runs: { A: [{ ...newItem([], "app-fridge-surround", 968), fridge: 1800 }] }, made: {} });
+    const built = withKitchenBuilt(base.doc, base.id, {});
+    if (typeof built === "string") throw new Error(built);
+    const sideTop = (doc: CadDocument) => {
+      const side = doc.features.find((f) => f.type === "extrude" && f.name.startsWith("Côté gauche habillage"));
+      return side?.type === "extrude" ? side.distance : null;
+    };
+    // Its dimension, beside it, to be typed.
+    const plan = kitchenPlanIn(built.doc, base.id)!;
+    const run = kitchenRuns(plan).find((r) => r.id === "A")!;
+    const dim = runDims(plan, run, runGeometry(plan, run), kitchenFromPlan(plan).fills.A!).find((d) => d.edit?.kind === "height");
+    expect(dim).toMatchObject({ axis: "z", a: 0, b: 2300 });
+    // As a cabinet: its sides 2,5 m high.
+    const item = plan.runs!.A![0]!.id;
+    const high = withSurroundHeight(built.doc, base.id, "A", item, 2500);
+    if (typeof high === "string") throw new Error(high);
+    expect(sideTop(high.doc)).toBe(2500);
+    expect(withSurroundHeight(built.doc, base.id, "A", item, 1000)).toMatch(/va de 160 à 300 cm/);
+    // Furnished: its sides, and its caisson made to the room over the fridge (2500 − 1800 − 30).
+    const cab = built.doc.features.find((f): f is CabinetFeature => f.type === "cabinet")!;
+    const made = withCabinetFurnished(built.doc, cab.id);
+    if (typeof made === "string") throw new Error(made);
+    const tall = withSurroundHeight(made.doc, base.id, "A", item, 2500);
+    if (typeof tall === "string") throw new Error(tall);
+    expect(sideTop(tall.doc)).toBe(2500);
+    const step = partitionOf(tall.doc.features.find((f) => f.id === made.sketch) as never)!.step;
+    expect(step.kind === "partition" && step.input.height).toBe(670);
+    expect(kitchenPlanIn(tall.doc, base.id)!.runs!.A![0]).toMatchObject({ height: 2500, furnished: made.sketch });
+  });
+
   it("la hauteur du réfrigérateur se règle : le caisson du dessus prend le reste, jamais moins de 20 cm", () => {
     const build = (fridge: number) => {
       const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, rest: { A: "end" }, runs: { A: [{ ...newItem([], "app-fridge-surround", 968), fridge }] }, made: {} });

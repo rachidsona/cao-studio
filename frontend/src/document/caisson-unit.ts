@@ -10,7 +10,7 @@ import { kitchenPlanIn, withKitchenBuilt } from "./kitchen-floor";
 import { findFeature, updateFeature } from "./operations";
 import type { OffsetRecord } from "./sketch";
 import type { CadDocument, KitchenRunItem } from "./types";
-import { applianceOf, SPACE_WALL } from "../features/kitchen-run-items";
+import { applianceOf, itemEntry, sizeLimits, SPACE_WALL, SURROUND, surroundFridge } from "../features/kitchen-run-items";
 
 type Made = { doc: CadDocument; problems: string[] } | string;
 
@@ -27,7 +27,7 @@ export function heldModel(doc: CadDocument, item: KitchenRunItem): string {
 }
 
 /** Where the caisson furnished on `sketchId` is kept: its plan, run and item, and its sketch. */
-function held(doc: CadDocument, sketchId: string) {
+export function held(doc: CadDocument, sketchId: string) {
   const sketch = findFeature(doc, sketchId);
   for (const f of doc.features) {
     const plan = f.type === "sketch" && f.kitchenPlan ? kitchenPlanIn(doc, f.id) : undefined;
@@ -75,4 +75,27 @@ export function withCaissonUnfurnished(doc: CadDocument, sketchId: string): Made
   // A fridge's surround with its own height and its fridge's.
   const unit: KitchenRunItem = { id, model, width: at.item.width, ...(applianceOf({ model }) && at.item.height ? { height: at.item.height } : {}), ...(at.item.fridge ? { fridge: at.item.fridge } : {}) };
   return withKitchenBuilt(freed, planId, { runs: { ...plan.runs, [run]: (plan.runs?.[run] ?? []).map((i) => (i.id === id ? unit : i)) } });
+}
+
+/**
+ * A fridge's surround made to this height (mm): its sides and its caisson on top, the fridge under it kept as high as
+ * it is (20 cm of caisson at least). Furnished (its caisson a Répartition), that caisson made again to the room left
+ * over the fridge.
+ */
+export function withSurroundHeight(doc: CadDocument, planId: string, run: string, itemId: string, mm: number): Made {
+  const plan = kitchenPlanIn(doc, planId);
+  const items = plan?.runs?.[run] ?? [];
+  const item = items.find((i) => i.id === itemId);
+  if (!plan || !item) return "Ce meuble n'est plus sur le linéaire.";
+  const surround = { ...item, model: item.furnished ? (item.from ?? item.model) : item.model };
+  if (applianceOf(surround)?.role !== "fridge-surround") return "Seul l'habillage de réfrigérateur se règle ainsi en hauteur.";
+  const [lo, hi] = sizeLimits(plan, itemEntry(surround)).height ?? [0, 0];
+  const height = Math.round(mm * 10) / 10;
+  if (!(height >= lo && height <= hi)) return `La hauteur de l'habillage va de ${lo / 10} à ${hi / 10} cm.`;
+  const built = withKitchenBuilt(doc, planId, { runs: { ...plan.runs, [run]: items.map((i) => (i.id === itemId ? { ...i, height } : i)) } });
+  if (typeof built === "string" || !item.furnished) return built;
+  // Its caisson: from over the fridge, with its air, up to the top.
+  const top = height - surroundFridge(plan, { ...surround, height }) - SURROUND.air;
+  const sized = withCaissonSized(built.doc, item.furnished, { height: top });
+  return typeof sized === "string" ? sized : { doc: sized.doc, problems: [...built.problems, ...sized.problems] };
 }
