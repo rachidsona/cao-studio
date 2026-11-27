@@ -130,6 +130,8 @@ describe("casquette en caissons à porte relevante (sur-meubles)", () => {
       const boxes = made.map((u) => cabinetBox(u));
       const overlap = (a: (typeof boxes)[number], b: (typeof boxes)[number]) => [0, 1, 2].every((i) => Math.min(a[1][i]!, b[1][i]!) - Math.max(a[0][i]!, b[0][i]!) > 0.5);
       expect(boxes.some((a, i) => boxes.some((b, j) => i < j && overlap(a, b)))).toBe(false);
+      // The corner's caisson as deep as the others (58 cm), on the run that passes.
+      expect(made.filter((u) => u.name.startsWith("Casquette d'angle")).map((u) => u.depth), corner).toEqual([580]);
     }
   });
 

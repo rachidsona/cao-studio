@@ -2808,7 +2808,8 @@ opération existante.
     elle arrive au haut des meubles hauts ; aménagés, leur caisson refait avec eux (celui de l'habillage, au-dessus du réfrigérateur), et redescendus
     sans les caissons : `itemSize` et `withCaissonsFollowing`), un caisson de sa largeur,
     de la « Profondeur des caissons » (58 cm d'habitude, comme les colonnes, de 30 à 80, contre le mur : il avance devant un haut de 35 ; celui d'un
-    angle garde la profondeur des hauts, pour ne pas entrer dans l'autre mur), de la « Hauteur des caissons » choisie (35 cm d'habitude, de 25 à 60), sa porte se levant ; sous un
+    angle aussi, sur le linéaire qui passe : sur l'autre, les caissons commencent au-delà de sa porte, un caisson qui n'y
+    tient plus étant omis), de la « Hauteur des caissons » choisie (35 cm d'habitude, de 25 à 60), sa porte se levant ; sous un
     plafond trop bas, pas de caisson là et un mot (`capUnits`). Un « Panneau entre hauts et caissons » (0 : aucun ; 1,8 cm
     pour un panneau de finition, jusqu'à 5) se pose sous chaque caisson, de sa largeur, du mur au nu de sa porte, pris sur
     sa hauteur : le haut des caissons et des colonnes ne bouge pas ; sur la bande, ce panneau choisit la casquette, son
