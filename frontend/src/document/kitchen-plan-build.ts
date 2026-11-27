@@ -13,7 +13,7 @@ import type { CornerDoorLook, KitchenFloorPlan, Vec3 } from "./types";
 import { ergonomics } from "../features/kitchen-appliances";
 import { originOf, type KitchenBox, type KitchenLayout, type KitchenUnit } from "../features/kitchen-layout";
 import { applianceOf, fillRun, heldUnits, isFiller, itemSize, openRoom, SURROUND, surroundFridge, type Placed, type RunFill } from "../features/kitchen-run-items";
-import { diagonalCorner, roundTerminal, roundedWorktop } from "./kitchen-shaped";
+import { diagonalCorner, lCorner, roundTerminal, roundedWorktop } from "./kitchen-shaped";
 import type { RunInfo } from "../features/room-runs";
 import { WALL_THICKNESS } from "./joinery-defaults";
 import { kitchenCap } from "./kitchen-cap";
@@ -274,11 +274,11 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
     const own = p.cornerSizes?.[joint];
     const lowDoor = hung(corner, own?.look);
     // Cut at 45°: its boards, its door and its piece of worktop, on the run that passes.
-    if (corner.kind === "diagonal" && pass) {
+    if ((corner.kind === "diagonal" || corner.kind === "lcase") && pass) {
       const L = run.length;
       const at = (u: number, a: number) => runAt(run, side === "left" ? u : L - u, run.back + a);
       // Marked as the corner's: built even on a run with nothing else on it yet.
-      diagonalCorner(corner.name, at, lArm(p, joint), D, [s.plinth, s.base], s.plinth, FRONT, [run.zone.run.depth, p.worktopHeight, p.worktopHeight - s.base], (name, kind, where, extra) => box(name, kind, where, { ...extra, corner: true }));
+      (corner.kind === "lcase" ? lCorner : diagonalCorner)(corner.name, at, lArm(p, joint), D, [s.plinth, s.base], s.plinth, FRONT, [run.zone.run.depth, p.worktopHeight, p.worktopHeight - s.base], (name, kind, where, extra) => box(name, kind, where, { ...extra, corner: true }));
     }
     if (corner.cabinet) cabinet(corner.name, corner.cabinet[0], corner.cabinet[1] - corner.cabinet[0], D, 0, s.base, { plinth: s.plinth, shelves: corner.shelves, ...lowDoor, corner: true, cornerEdit: lowEdit });
     for (const f of corner.fronts) {

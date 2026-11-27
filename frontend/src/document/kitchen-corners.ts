@@ -4,7 +4,8 @@
  * - le meuble d'angle à étagère, sur le linéaire qui passe : un panneau devant l'angle et une porte de 45 cm, à 10 cm
  *   du mur de l'angle (pris sur sa partie fixe : 62 cm de fixe deviennent 52) ;
  * - le meuble d'angle LeMans : le même caisson, ses deux plateaux pivotent et sortent, tout l'angle sert ;
- * - le meuble d'angle en L, 90 × 90 : un caisson sur chaque mur, une porte pliante qui ouvre l'angle en grand.
+ * - le meuble d'angle en L, 90 × 90 : un caisson sur chaque mur, une porte pliante qui ouvre l'angle en grand ;
+ * - le caisson d'angle en L : un seul caisson, ses planches en L (document/kitchen-shaped.ts), la même porte pliante.
  * La porte du meuble d'angle et les côtés du L se règlent, angle par angle. En haut, dans la rangée des meubles hauts :
  * rien, un haut d'angle à porte (un panneau devant l'angle, une porte de 30 cm) ou un haut d'angle en L (60 × 60), réglables
  * de même.
@@ -21,6 +22,7 @@ export const CORNER_KINDS: Record<CornerKind, { label: string; summary: string }
   lemans: { label: "Meuble d'angle LeMans", summary: "Une porte (45 cm d'origine), deux plateaux qui pivotent et sortent : tout l'angle sert." },
   magic: { label: "Meuble d'angle Magic Corner", summary: "Une porte (45 cm d'origine) ; à l'ouverture, deux paniers sortent et ceux du fond viennent devant : tout l'angle sert." },
   l: { label: "Meuble d'angle en L", summary: "Un caisson sur chaque mur (90 cm d'origine), porte pliante : l'angle s'ouvre en grand." },
+  lcase: { label: "Caisson d'angle en L", summary: "Un seul caisson en L sur les deux murs (90 cm d'origine) : dessous, étagère et dessus en L, un côté au bout de chaque bras, porte pliante." },
   diagonal: { label: "Meuble d'angle en biais", summary: "Sur les deux murs (90 cm d'origine), une porte à 45° : un pentagone, une étagère, l'angle se range de face." },
   carousel: { label: "Meuble d'angle carrousel", summary: "En L (90 cm d'origine), porte pliante ; deux plateaux tournants (trois quarts de cercle) : on fait tourner l'angle." },
 };
@@ -117,7 +119,7 @@ export function cornerSide(p: KitchenFloorPlan, run: KitchenRun, side: Joint, of
   };
   const out: CornerSide = { kind, name: `${CORNER_KINDS[kind].label} ${tag}`, cabinet: null, shelves: 0, fronts: [], trays: [] };
   // Cut at 45°: not a box, built board by board on the run that passes (document/kitchen-shaped.ts).
-  if (kind === "diagonal") out.name = `Meuble d'angle en biais ${tag}`;
+  if (kind === "diagonal" || kind === "lcase") out.name = `${kind === "lcase" ? "Caisson d'angle en L" : "Meuble d'angle en biais"} ${tag}`;
   else if (isLCorner(kind)) {
     const arm = lArm(p, joint);
     out.cabinet = span(end === "pass" ? 0 : D, arm);

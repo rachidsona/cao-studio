@@ -6,6 +6,9 @@
  *   de travail s'arrondit au-dessus de lui ;
  * - l'**angle en biais** : un caisson pentagone sur les deux murs (90 × 90 d'origine), dessous, étagère et dessus en
  *   pentagone, deux côtés, une porte à 45° et sa plinthe ; un morceau de plan de travail en triangle couvre son devant.
+ * - le **caisson d'angle en L** : un seul caisson sur les deux murs (90 × 90 d'origine), dessous, étagère et dessus en
+ *   L, un côté au bout de chaque bras, une porte pliante (un battant devant chaque bras) et sa plinthe en L ; le plan de
+ *   travail des deux linéaires le couvre.
  * Chaque planche est une pièce du plan (document/kitchen-plan.ts dessine son contour à plat et le monte en hauteur) ;
  * le débit la compte dans son rectangle. Pur.
  */
@@ -104,4 +107,32 @@ export function diagonalCorner(name: string, at: At, arm: number, depth: number,
   const o = (top - depth) * (Math.SQRT2 - 1);
   const w = shaped(at, [[top, top], [arm + o, top], [top, arm + o]], z2 - thick, z2);
   box(`${name} — plan de travail`, "worktop", w.at, { outline: w.outline });
+}
+
+/**
+ * A caisson in L, its arms `arm` long on both walls from the corner, `depth` deep (as `diagonalCorner`): bottom, shelf
+ * and top in L, a side at the end of each arm, a folding door — a leaf in front of each arm — and its plinth in L.
+ * shortcut: no back (against the walls, as the corner cut at 45°) and one shelf; a back or more shelves, when asked.
+ */
+export function lCorner(name: string, at: At, arm: number, depth: number, [z0, z1]: [number, number], socle: number, front: number, _worktop: [number, number, number], box: BoxOf): void {
+  const plate = (label: string, z: number, inner = 0) => {
+    const s = shaped(at, [[0, 0], [arm - inner, 0], [arm - inner, depth], [depth, depth], [depth, arm - inner], [0, arm - inner]], z, z + T);
+    box(`${name} — ${label}`, "panel", s.at, { outline: s.outline, carcass: true });
+  };
+  plate("dessous", z0);
+  plate("étagère", (z0 + z1) / 2 - T / 2, T);
+  plate("dessus", z1 - T);
+  const piece = (label: string, kind: KitchenBox["kind"], pts: [number, number][], [h0, h1]: [number, number], carcass = false) => {
+    const s = shaped(at, pts, h0, h1);
+    box(`${name} — ${label}`, kind, s.at, { outline: s.outline, ...(carcass ? { carcass: true } : {}) });
+  };
+  piece("côté", "panel", [[arm - T, 0], [arm, 0], [arm, depth], [arm - T, depth]], [z0 + T, z1 - T], true);
+  piece("côté (2)", "panel", [[0, arm - T], [depth, arm - T], [depth, arm], [0, arm]], [z0 + T, z1 - T], true);
+  // The folding door: a leaf before each arm, as the L corner unit's (from the front of the other arm).
+  const [d0, d1] = [depth + front + 1.5, arm - 1.5];
+  piece("porte pliante", "panel", [[d0, depth], [d1, depth], [d1, depth + front], [d0, depth + front]], [z0 + 1.5, z1 - 1.5]);
+  piece("porte pliante (2)", "panel", [[depth, d0], [depth + front, d0], [depth + front, d1], [depth, d1]], [z0 + 1.5, z1 - 1.5]);
+  // The plinth in L, set back under the doors.
+  const [k0, k1] = [depth + front - 76, depth + front - 60];
+  piece("plinthe", "kick", [[k0, k0], [arm, k0], [arm, k1], [k1, k1], [k1, arm], [k0, arm]], [0, socle - 3]);
 }

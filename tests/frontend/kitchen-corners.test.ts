@@ -48,12 +48,12 @@ describe("angles de cuisine", () => {
       const p = plan({ corners: { left: kind, right: kind } });
       const layout = kitchenFromPlan({ ...p, ...proposeKitchen(p) });
       const corner = layout.units.filter((u) => u.name.startsWith("Meuble d'angle"));
-      expect(corner.length, kind).toBe(kind === "dead" || kind === "diagonal" ? 0 : isLCorner(kind) ? 4 : 2);
-      // Boards cut to an outline (the corner cut at 45°) are not their bounds: checked in kitchen-shaped.test.ts.
+      expect(corner.length, kind).toBe(kind === "dead" || kind === "diagonal" || kind === "lcase" ? 0 : isLCorner(kind) ? 4 : 2);
+      // Boards cut to an outline (the corner cut at 45°, the caisson in L) are not their bounds: checked in kitchen-shaped.test.ts.
       const boxes: Box[] = [...layout.units.map(overSocle), ...layout.boxes.filter((b) => (b.kind === "filler" || b.kind === "panel") && !b.outline).map((b): Box => [b.from, b.to])];
       for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i]!, boxes[j]!), `${kind} : ${i} et ${j}`).toBe(false);
       // Every door is its cabinet's fronts (none for the one cut at 45°, built board by board): a folding door's leaves too.
-      if (kind !== "dead" && kind !== "diagonal") expect(corner.every((u) => u.layout === "door" && u.span), kind).toBe(true);
+      if (kind !== "dead" && kind !== "diagonal" && kind !== "lcase") expect(corner.every((u) => u.layout === "door" && u.span), kind).toBe(true);
       expect(layout.boxes.some((b) => /^Porte/.test(b.name)), kind).toBe(false);
       if (kind === "dead") expect(layout.boxes.filter((b) => b.name.startsWith("Fileur d'angle")).length).toBe(4);
     }
@@ -200,9 +200,9 @@ describe("angles de cuisine", () => {
       for (const through of [false, true]) {
         const p = plan({ corners: { left: kind, right: kind }, through: { left: through } });
         const layout = kitchenFromPlan({ ...p, ...proposeKitchen(p) });
-        // The corner cut at 45° has its own plinth, cut to its outline (kitchen-shaped.test.ts).
+        // The corner cut at 45° and the caisson in L have their own plinth, cut to its outline (kitchen-shaped.test.ts).
         const kicks = layout.boxes.filter((b) => b.kind === "kick" && !b.outline);
-        if (kind !== "diagonal") expect(kicks.filter((b) => b.name.startsWith("Plinthe d'angle")).length, `${kind} ${through}`).toBeGreaterThanOrEqual(2);
+        if (kind !== "diagonal" && kind !== "lcase") expect(kicks.filter((b) => b.name.startsWith("Plinthe d'angle")).length, `${kind} ${through}`).toBeGreaterThanOrEqual(2);
         const others: Box[] = [...layout.units.map(overSocle), ...layout.boxes.filter((b) => (b.kind === "filler" || b.kind === "panel") && !b.outline).map((b): Box => [b.from, b.to])];
         for (let i = 0; i < kicks.length; i++) {
           for (let j = i + 1; j < kicks.length; j++) expect(overlaps([kicks[i]!.from, kicks[i]!.to], [kicks[j]!.from, kicks[j]!.to]), `${kind} ${kicks[i]!.name} et ${kicks[j]!.name}`).toBe(false);
