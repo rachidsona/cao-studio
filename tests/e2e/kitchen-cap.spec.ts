@@ -306,7 +306,7 @@ test("plan de cuisine : la profondeur tapée sur une carte, pour tout ce modèle
   expect(errors).toEqual([]);
 });
 
-test("plan de cuisine, « Plan fixe » : la carte ouverte reste seule, son titre et ses onglets fixés sous le plan ; fermée, les autres reviennent", async ({ page }) => {
+test("plan de cuisine, « Plan fixe » : la carte ouverte reste seule, son titre et ses onglets fixés sous le plan, les boutons du meuble choisi au-dessus ; fermée, les autres reviennent", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "zz-test-carte-seule");
@@ -333,6 +333,13 @@ test("plan de cuisine, « Plan fixe » : la carte ouverte reste seule, son titre
   // Its tabs (Bas, Hauts…) too, just under its title.
   const tabs = (await tool.locator("[data-fold-tabs]").boundingBox())!;
   expect(Math.abs(tabs.y - (head.y + head.height))).toBeLessThan(4);
+  // A unit added is chosen: its buttons (move, delete…) between the plan and the card, the card still alone.
+  await tool.locator("[data-add]").first().click();
+  const bar = tool.locator("[data-strip-actions]");
+  await expect(bar.locator("button").first()).toBeVisible({ timeout: 30_000 });
+  await expect(heads).toHaveCount(1);
+  await tool.locator("[data-run-fixed]").scrollIntoViewIfNeeded();
+  expect((await bar.boundingBox())!.y).toBeLessThan((await tool.locator('[data-fold="add"]').boundingBox())!.y);
   // Closed: the others are back.
   await tool.locator('[data-fold="add"]').click();
   await expect(heads).toHaveCount(all);
