@@ -4,7 +4,7 @@
  * prix, un compte), visible même fermé. Le contenu n'est fait que s'il est ouvert. Chacun est une carte, détachée par
  * son ombre. Une carte ouverte de l'extérieur (« Modifier la sélection ») est amenée dans la vue. Avec « Plan fixe »
  * (`focus`), la carte ouverte reste seule — les autres reviennent quand on la ferme — et son titre reste fixé juste sous
- * le plan quand on fait défiler.
+ * le plan quand on fait défiler, ses onglets en haut (Bas, Hauts…) juste sous lui.
  */
 import { el } from "./dom";
 import { planFixed } from "./fixed-plan";
@@ -45,7 +45,15 @@ export class Folds {
       aside ?? null,
     );
     head.addEventListener("click", () => this.toggle(key));
-    const section = el("section", { class: `my-2 ${alone ? "" : "overflow-hidden"} rounded-lg border border-gray-200 bg-white shadow-md shadow-gray-900/10 dark:border-white/10 dark:bg-white/5 dark:shadow-black/40`, "data-fold-section": key }, head, open ? el("div", { class: "space-y-1.5 border-t border-gray-200 p-2 dark:border-white/10" }, ...content()) : null);
+    const body = open ? el("div", { class: "space-y-1.5 border-t border-gray-200 p-2 dark:border-white/10" }, ...content()) : null;
+    const section = el("section", { class: `my-2 ${alone ? "" : "overflow-hidden"} rounded-lg border border-gray-200 bg-white shadow-md shadow-gray-900/10 dark:border-white/10 dark:bg-white/5 dark:shadow-black/40`, "data-fold-section": key }, head, body);
+    // Its tabs at the top (Bas, Hauts…): fixed under its title too, as tall as it is once drawn.
+    const tabs = alone ? body?.querySelector<HTMLElement>("[role=tablist]") : null;
+    if (tabs) {
+      tabs.classList.add("sticky", "top-[calc(var(--fixed-plan-h,0px)+var(--fold-head-h,2.25rem))]", "z-[5]", "bg-white", "dark:bg-gray-900");
+      tabs.setAttribute("data-fold-tabs", "");
+      requestAnimationFrame(() => head.offsetHeight && section.style.setProperty("--fold-head-h", `${head.offsetHeight}px`));
+    }
     // Opened from outside: brought into view once it is in the panel, once.
     if (this.reveal === key) {
       this.reveal = null;

@@ -306,7 +306,7 @@ test("plan de cuisine : la profondeur tapée sur une carte, pour tout ce modèle
   expect(errors).toEqual([]);
 });
 
-test("plan de cuisine, « Plan fixe » : la carte ouverte reste seule, son titre fixé sous le plan ; fermée, les autres reviennent", async ({ page }) => {
+test("plan de cuisine, « Plan fixe » : la carte ouverte reste seule, son titre et ses onglets fixés sous le plan ; fermée, les autres reviennent", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "zz-test-carte-seule");
@@ -330,6 +330,9 @@ test("plan de cuisine, « Plan fixe » : la carte ouverte reste seule, son titre
   const fixed = (await tool.locator("[data-run-fixed]").boundingBox())!;
   const head = (await tool.locator('[data-fold="add"]').boundingBox())!;
   expect(Math.abs(head.y - (fixed.y + fixed.height))).toBeLessThan(4);
+  // Its tabs (Bas, Hauts…) too, just under its title.
+  const tabs = (await tool.locator("[data-fold-tabs]").boundingBox())!;
+  expect(Math.abs(tabs.y - (head.y + head.height))).toBeLessThan(4);
   // Closed: the others are back.
   await tool.locator('[data-fold="add"]').click();
   await expect(heads).toHaveCount(all);
