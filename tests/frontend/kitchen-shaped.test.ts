@@ -1,5 +1,6 @@
 /** Les meubles qui ne sont pas des boîtes : le terminal arrondi au bout d'un linéaire, l'angle en biais. */
 import { describe, expect, it } from "vitest";
+import type { KitchenBox } from "../../frontend/src/features/kitchen-layout";
 import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { KITCHEN_PLAN, kitchenSizes } from "../../frontend/src/document/kitchen-plan-shapes";
 import { quarterRound } from "../../frontend/src/document/kitchen-shaped";
@@ -54,16 +55,23 @@ describe("meubles en forme", () => {
     expect(bottom.from[2]).toBe(s.plinth);
   });
 
-  it("caisson d'angle en L : un seul caisson, ses planches en L, un côté au bout de chaque bras, une porte pliante et sa plinthe", () => {
+  it("caisson d'angle en L : un seul caisson, ses planches en L, deux étagères, un fond contre chaque mur, un côté au bout de chaque bras, une porte pliante et sa plinthe", () => {
     const p: KitchenFloorPlan = { ...KITCHEN_PLAN, model: "L-left", lengthA: 3000, lengthB: 2500, island: false, corners: { left: "lcase" }, rest: { A: "end", B: "start" }, runs: { A: units([["base-bas-1-porte", 600]]), B: units([["base-bas-1-porte", 600]]) } };
     const layout = kitchenFromPlan(p);
     const pieces = layout.boxes.filter((b) => b.name.startsWith("Caisson d'angle en L"));
-    expect(pieces.map((b) => b.name.replace(/^Caisson d'angle en L \S+ — /, ""))).toEqual(["dessous", "étagère", "dessus", "côté", "côté (2)", "porte pliante", "porte pliante (2)", "plinthe"]);
+    expect(pieces.map((b) => b.name.replace(/^Caisson d'angle en L \S+ — /, ""))).toEqual(["dessous", "étagère 1", "étagère 2", "dessus", "côté", "côté (2)", "fond", "fond (2)", "porte pliante", "porte pliante (2)", "plinthe"]);
     // In L, 92 × 92 on the walls, 58 deep: no box, no other caisson in the corner.
     const bottom = pieces.find((b) => b.name.endsWith("dessous"))!;
     expect(bottom.outline).toHaveLength(6);
     expect([Math.round(bottom.to[0] - bottom.from[0]), Math.round(bottom.to[1] - bottom.from[1])]).toEqual([920, 920]);
     expect(layout.units.filter((u) => u.corner)).toEqual([]);
+    // The backs meet in the corner without overlapping (one through it), as long as the arms less a side; the shelves in front of them.
+    const [b1, b2] = ["fond", "fond (2)"].map((n) => pieces.find((b) => b.name.endsWith(`— ${n}`))!) as [KitchenBox, KitchenBox];
+    const span = (b: KitchenBox, i: 0 | 1) => Math.round(b.to[i] - b.from[i]);
+    expect([span(b1, 0) + span(b2, 0), span(b1, 1) + span(b2, 1)].sort()).toEqual([902, 905]);
+    expect([b1.material, b2.material]).toEqual(["hdf", "hdf"]);
+    const shelf = pieces.find((b) => b.name.endsWith("étagère 1"))!;
+    expect([span(shelf, 0), span(shelf, 1)]).toEqual([899, 899]);
     // The worktops of both runs cover it, as over a corner unit.
     expect(layout.boxes.filter((b) => b.kind === "worktop").map((b) => b.name)).toEqual(["Plan de travail A", "Plan de travail B"]);
   });

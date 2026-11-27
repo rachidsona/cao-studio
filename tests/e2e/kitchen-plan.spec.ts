@@ -159,10 +159,12 @@ test("angles : chaque angle se choisit dans le linéaire ou dans Meubles de cuis
   await expect(page.locator('[title="Meuble d\'angle en biais A — porte en biais — OK"]').first()).toBeAttached({ timeout: 60_000 });
   await expect(page.locator('[title="Meuble d\'angle en biais A — dessous — OK"]').first()).toBeAttached();
   await expect(page.locator('[data-ref="status-recompute"]')).toHaveText(/^Recalcul \d+ ms$/);
-  // One caisson in L: its boards in L, a folding door, built by the kernel.
+  // One caisson in L: its boards in L, two shelves, a back on each wall, a folding door, built by the kernel.
   await page.locator('[data-corner-choice="right"] [data-corner-kind="lcase"]').click();
   await expect(page.locator('[title="Caisson d\'angle en L A (droite) — dessous — OK"]').first()).toBeAttached({ timeout: 60_000 });
   await expect(page.locator('[title="Caisson d\'angle en L A (droite) — porte pliante (2) — OK"]').first()).toBeAttached();
+  await expect(page.locator('[title="Caisson d\'angle en L A (droite) — fond (2) — OK"]').first()).toBeAttached();
+  await expect(page.locator('[title="Caisson d\'angle en L A (droite) — étagère 2 — OK"]').first()).toBeAttached();
   await expect(page.locator('[data-ref="status-recompute"]')).toHaveText(/^Recalcul \d+ ms$/);
   await shot(page, "7-angle-caisson-l");
   expect(errors).toEqual([]);
