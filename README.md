@@ -1721,7 +1721,9 @@ opération existante.
   - sur un dossier : Renommer, Défaire (garder ses corps), Supprimer avec ses corps ;
   - sur une esquisse : Masquer/Afficher, Modifier, Supprimer ; sur plusieurs esquisses sélectionnées : Masquer/Afficher et Supprimer, toutes d'un coup.
 
-  Le titre **« Esquisses »** a lui aussi son œil (masquer ou afficher toutes les esquisses) et sa corbeille. La corbeille supprime toutes les esquisses en une seule annulation : elle demande d'abord, puis nomme les corps qui partent avec elles.
+  Le titre **« Esquisses »** a lui aussi son œil (masquer ou afficher toutes les esquisses) et sa corbeille. Tant
+  qu'elles sont toutes cachées, une esquisse nouvelle arrive cachée elle aussi (`document/hidden-sketches.ts`) ;
+  une seule remontrée, les nouvelles se montrent de nouveau. La corbeille supprime toutes les esquisses en une seule annulation : elle demande d'abord, puis nomme les corps qui partent avec elles.
 
   Tous les corps que touche la sélection (entiers, ou par une face, une arête ou un coin) sont éclairés dans le
   navigateur. L'élément **sélectionné** (dans le navigateur ou dans la vue 3D) est éclairé en **#F8F8F8**, écrit en encre foncée, avec un liseré bleu à gauche. S'il est dans un dossier fermé, ce dossier s'ouvre. S'il est plus bas dans la liste, elle défile jusqu'à lui.

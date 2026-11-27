@@ -27,7 +27,7 @@ const SELECT_SKETCHES_HELP: ToolHelp = {
     "Servez-vous de la sélection : les cacher, les déplacer, les isoler, les supprimer…",
     "Échap, ou un clic dans le vide, vide la sélection.",
   ],
-  tip: "Une esquisse cachée n'est pas prise : l'œil du titre « Esquisses », dans l'arbre, les montre toutes d'abord.",
+  tip: "Une esquisse cachée n'est pas prise : l'œil du titre « Esquisses », dans l'arbre, les montre toutes d'abord. Tant qu'il les cache toutes, une esquisse nouvelle arrive cachée aussi.",
 };
 
 const DELETE_SELECTION_HELP: ToolHelp = {

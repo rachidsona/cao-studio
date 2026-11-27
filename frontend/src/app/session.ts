@@ -2,6 +2,7 @@
  * Document session: current document, undo/redo, dirty tracking, local
  * recovery and saves to the Django API (manual and automatic).
  */
+import { withNewSketchesHidden } from "../document/hidden-sketches";
 import type { CadDocument } from "../document/types";
 import { UndoStack } from "../history/undo";
 import { ApiError, saveOnExit, saveProject, type ProjectSnapshot } from "../persistence/api";
@@ -49,10 +50,10 @@ export class DocumentSession {
     return JSON.stringify(this.doc) !== this.savedJson;
   }
 
-  /** Applies a new document state as one undoable step. */
+  /** Applies a new document state as one undoable step; its new sketches hidden if all the others are. */
   apply(next: CadDocument): void {
     this.undo.push(this.doc);
-    this.replace(next);
+    this.replace(withNewSketchesHidden(this.doc, next));
   }
 
   /** Replaces the document without recording an undo step (undo/redo/restore). */
