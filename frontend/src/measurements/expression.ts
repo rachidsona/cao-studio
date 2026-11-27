@@ -51,9 +51,39 @@ function tokenize(text: string): Token[] {
   return tokens;
 }
 
-/** Evaluates `text`; the result is in mm (lengths) or degrees (angles). */
+/**
+ * A « ) » with no « ( » before it: the 5 typed where a bracket opens (at the start, after a sign or a bracket) was the
+ * AZERTY « ( » key — it is one again, the nearest one before the « ) ».
+ */
+export function repairBrackets(text: string): string {
+  let out = text;
+  for (let guard = 0; guard < 20; guard++) {
+    let depth = 0;
+    let lonely = -1;
+    for (let i = 0; i < out.length; i++) {
+      if (out[i] === "(") depth++;
+      else if (out[i] === ")") {
+        if (depth === 0) {
+          lonely = i;
+          break;
+        }
+        depth--;
+      }
+    }
+    if (lonely < 0) return out;
+    const opener = [...out.slice(0, lonely)].map((c, i) => ({ c, i })).reverse().find(({ c, i }) => c === "5" && (i === 0 || /[-+*/×÷(;\s]/.test(out[i - 1]!)));
+    if (!opener) return out;
+    out = `${out.slice(0, opener.i)}(${out.slice(opener.i + 1)}`;
+  }
+  return out;
+}
+
+/**
+ * Evaluates `text`; the result is in mm (lengths) or degrees (angles). Typed on AZERTY, its « ( » key gave a 5
+ * (ui/digit-keys.ts): the « ) » makes it a bracket again.
+ */
 export function evaluateExpression(text: string, defaultUnit: ExpressionUnit): number {
-  const tokens = tokenize(text);
+  const tokens = tokenize(repairBrackets(text));
   if (tokens.length === 0) throw new ExpressionError("Saisissez une valeur.");
   const isAngle = defaultUnit === "deg";
   const units = isAngle ? ANGLE_UNITS : LENGTH_UNITS;

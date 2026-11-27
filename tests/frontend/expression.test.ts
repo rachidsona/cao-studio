@@ -28,4 +28,9 @@ describe("expressions de cotes", () => {
     expect(() => evaluateExpression("4 / 0", "mm")).toThrow(/zéro/);
     expect(() => evaluateExpression("alert(1)", "mm")).toThrow();
   });
+
+  it("tapé sur un clavier AZERTY, la touche « ( » a donné 5 : la « ) » en refait une parenthèse", () => {
+    expect(evaluateExpression("52+3)*2", "mm")).toBe(10);
+    expect(evaluateExpression("35", "mm")).toBe(35);
+  });
 });

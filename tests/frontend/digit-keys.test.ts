@@ -19,8 +19,9 @@ describe("chiffre d'une touche de la rangée des chiffres", () => {
     expect(digitOfKey(key("Digit6", "-"), false)).toBeNull();
   });
 
-  it("dans un champ de calcul, la « ( » reste une parenthèse ; dans un champ simple, elle donne 5", () => {
-    expect(digitOfKey(key("Digit5", "("), true)).toBeNull();
+  it("dans un champ de calcul aussi, la touche 5 donne 5 (une « ) » en refait la parenthèse) ; les signes restent", () => {
+    expect(digitOfKey(key("Digit5", "("), true)).toBe("5");
+    expect(digitOfKey(key("Minus", ")"), true)).toBeNull();
     expect(digitOfKey(key("Digit5", "("), false)).toBe("5");
     expect(digitOfKey(key("Digit2", "é"), true)).toBe("2");
   });
