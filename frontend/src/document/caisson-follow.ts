@@ -12,7 +12,7 @@ import type { OffsetRecord } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
 import type { CadDocument, KitchenFloorPlan, KitchenRunItem, PlaneFrame, SketchFeature, Vec3 } from "./types";
 import type { KitchenUnit } from "../features/kitchen-layout";
-import { applianceOf } from "../features/kitchen-run-items";
+import { heldTall } from "../features/kitchen-run-items";
 import { placePoint } from "../features/room-runs";
 import { nearestPlane } from "../sketcher/frame";
 import { extrusionGroups, isPartition, rebuildChain } from "../sketcher/partition-history";
@@ -92,8 +92,8 @@ export function withCaissonsFollowing(base: CadDocument, plan: KitchenFloorPlan,
     if (sketch?.type !== "sketch" || !sketch.frame || record?.step.kind !== "partition") continue;
     const frame = panelsFrame(placed(plan, u), record.step.depth!);
     const width = record.step.input.length;
-    // A fridge surround's caisson as high as its room over the fridge too (the surround rises with a casquette of caissons: itemSize).
-    const height = item?.from && applianceOf({ model: item.from })?.role === "fridge-surround" && Math.abs(record.step.input.height - u.height) >= 0.05 ? u.height : undefined;
+    // A column's or a fridge surround's caisson as high as its room too (they rise with a casquette of caissons: itemSize).
+    const height = item && heldTall(item) && Math.abs(record.step.input.height - u.height) >= 0.05 ? u.height : undefined;
     const resized = Math.abs(width - u.width) >= 0.05 || height !== undefined;
     // Made of a unit of the plan when its sides stopped over the plinth: down to the floor now, as its unit's (notched for the plinth: kick-notches.ts).
     const dated = !!item?.from && record.step.input.outer === "board" && record.step.input.plinth > 0;

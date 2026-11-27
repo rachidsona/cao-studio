@@ -64,9 +64,9 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
       out.units.push({ name, origin: originOf(rotation, lo, hi), rotation, width: w, height, depth, run: run.id, ...rest });
     };
     for (const pl of fill.spaces) {
-      const { height, depth, z } = itemSize(p, pl.item, pl.entry);
-      // A surround's caisson furnished by hand: its room is between the sides, over the fridge.
+      // A surround's caisson furnished by hand: its room is between the sides, over the fridge; a column's, as high as the column.
       const as = heldUnits({ spaces: [pl] })[0];
+      const { height, depth, z } = as?.entry.kind === "tall" ? itemSize(p, as.item, as.entry) : itemSize(p, pl.item, pl.entry);
       const lift = as && applianceOf(as.item)?.role === "fridge-surround" ? surroundFridge(p, as.item) + SURROUND.air : 0;
       const [u0, u1, top] = lift ? [pl.at + FRONT, pl.at + pl.item.width - FRONT, itemSize(p, as!.item, as!.entry).height] : [pl.at, pl.at + pl.item.width, z + height];
       const [lo, hi] = band(u0, u1, 0, depth, lift || z, top);

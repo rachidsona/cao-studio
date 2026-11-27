@@ -52,6 +52,8 @@ export const FILLER_WALL = "filler-wall";
 export const SPACE = "space";
 export const SPACE_WALL = "space-wall";
 export const isSpace = (item: Pick<KitchenRunItem, "model">): boolean => item.model === SPACE || item.model === SPACE_WALL;
+/** A column or a fridge's surround furnished by hand (its caisson a Répartition). */
+export const heldTall = (i: KitchenRunItem): boolean => !!i.furnished && !!i.from && (applianceOf({ model: i.from })?.kind === "tall" || CATALOG.some((e) => modelOf(e) === i.from && e.kind === "tall"));
 /** A filler or a space: no cabinet, its width only. */
 export const isFiller = (item: Pick<KitchenRunItem, "model">): boolean => item.model === FILLER || item.model === FILLER_WALL || isSpace(item);
 
@@ -312,7 +314,6 @@ function packedRows(g: RunGeometry, items: readonly KitchenRunItem[], heights: H
   const rest: Exclude<RestSide, "walls"> = g.rest !== "walls" ? g.rest : ml && mr ? "both" : ml ? "start" : mr ? "end" : g.ends[0] !== "free" && g.ends[1] !== "free" ? "both" : g.ends[0] !== "free" ? "start" : "end";
   const base = pack(stretches, all.filter((i) => i.row === "base"), rest);
   // A column — or a column's or a fridge surround's caisson furnished by hand in its room — leaves no wall row over it.
-  const heldTall = (i: KitchenRunItem) => !!i.furnished && !!i.from && (applianceOf({ model: i.from })?.kind === "tall" || CATALOG.some((e) => modelOf(e) === i.from && e.kind === "tall"));
   const columns = base.placed.filter((p) => p.entry.kind === "tall" || (isSpace(p.item) && heldTall(p.item))).map((p) => ({ from: p.at, to: p.at + p.item.width, what: p.entry.name, bottom: 0, top: Infinity }));
   const high = g.wall ? rowStretches(g, g.wall, heights.wallBottom, heights.wallTop).flatMap(([a, b]) => freeStretches(columns, a, b, 0, 1)) : [];
   const highs = all.filter((i) => i.row === "wall");

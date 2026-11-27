@@ -195,6 +195,25 @@ describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
     expect([sideTop(bare.doc), caisson(bare.doc).input.height]).toEqual([top, top - 1800 - 30]);
   });
 
+  it("une colonne aménagée monte avec les caissons de casquette, et redescend sans eux", async () => {
+    const { withCabinetFurnished } = await import("../../frontend/src/document/cabinet-furnish");
+    const { caissonSizes } = await import("../../frontend/src/document/caisson-unit");
+    const { kitchenSizes } = await import("../../frontend/src/document/kitchen-plan-shapes");
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, height: 3000, runs: { A: [newItem([], "app-oven-column", 600)] }, made: {} });
+    const built = withKitchenBuilt(base.doc, base.id, {});
+    if (typeof built === "string") throw new Error(built);
+    const made = withCabinetFurnished(built.doc, built.doc.features.find((f): f is CabinetFeature => f.type === "cabinet")!.id);
+    if (typeof made === "string") throw new Error(made);
+    const top = kitchenSizes(KITCHEN_PLAN).wallTop;
+    expect(caissonSizes(made.doc, made.sketch)!.height).toBe(top);
+    const capped = withKitchenBuilt(made.doc, base.id, { cap: "units", capHeight: 350 });
+    if (typeof capped === "string") throw new Error(capped);
+    expect(caissonSizes(capped.doc, made.sketch)!.height).toBe(top + 350);
+    const bare = withKitchenBuilt(capped.doc, base.id, { cap: undefined });
+    if (typeof bare === "string") throw new Error(bare);
+    expect(caissonSizes(bare.doc, made.sketch)!.height).toBe(top);
+  });
+
   it("la hauteur du réfrigérateur se règle : le caisson du dessus prend le reste, jamais moins de 20 cm", () => {
     const build = (fridge: number) => {
       const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, { ...KITCHEN_PLAN, model: "I", lengthA: 3600, rest: { A: "end" }, runs: { A: [{ ...newItem([], "app-fridge-surround", 968), fridge }] }, made: {} });
