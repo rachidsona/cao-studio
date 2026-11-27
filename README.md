@@ -2988,7 +2988,10 @@ opération existante.
       au-delà d'un voisin change d'ordre, comme avant ; lâché dans la place vide à côté de lui (hachurée), il s'y
       pose à l'endroit exact — il s'arrête au bout de sa place libre et s'y colle à 1,5 cm près — et les autres
       meubles ne bougent pas. Le plan le garde par des « Espaces libres », le reste du linéaire allant « à droite » ;
-      les fileurs que le plan mettait dans le reste deviennent des fileurs posés, à leur place.
+      les fileurs que le plan mettait dans le reste deviennent des fileurs posés, à leur place. Pendant qu'on le
+      tire, une ligne pointillée marque le **milieu** de sa place libre (« milieu, … cm de chaque côté ») ; à 6 cm
+      près, il s'y met, la ligne pleine : lâché là, la place est partagée à parts égales de chaque côté — un caisson
+      aménagé à la main aussi.
     - **Sans portes** (`app/kitchen/strip-doors.ts`) : la case, à côté de « Plan fixe », dessine la bande sans les
       portes ni les façades de tiroir — l'intérieur des caissons se voit : étagères, cloisons, tiroirs (leurs caissons
       en pointillés), tiroirs à l'anglaise, traverses d'un bas évier ; les portes et panneaux d'angle en pointillés,

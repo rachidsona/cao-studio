@@ -957,6 +957,21 @@ test("linéaire : un meuble glissé à la souris dans la place vide s'y pose, la
   await close.click();
   await expect(close).toHaveCount(0);
   await expect.poll(left, { timeout: 30_000 }).toBeLessThan(was - 50);
+  // Dragged near the middle of the free room after it: the middle is shown, it goes there — as much room on each side.
+  await expect(tool.locator("[data-run-preview]")).toHaveCount(0, { timeout: 60_000 });
+  const free = (await strip.locator('[data-free="base"]').first().boundingBox())!;
+  const b = (await big.boundingBox())!;
+  const [bx, by] = [b.x + b.width / 2, b.y + b.height / 2];
+  await page.mouse.move(bx, by);
+  await page.mouse.down();
+  await page.mouse.move(bx + free.width * 0.25, by, { steps: 4 });
+  await page.mouse.move(bx + free.width / 2 + 2, by, { steps: 4 });
+  await expect(strip.locator('[data-strip-middle="on"]')).toHaveCount(1);
+  await page.mouse.up();
+  await expect(strip.locator("[data-strip-middle]")).toHaveCount(0);
+  await expect(strip.locator('[data-free="base"]')).toHaveCount(2, { timeout: 30_000 });
+  const [w1, w2] = await Promise.all([0, 1].map(async (i) => (await strip.locator('[data-free="base"]').nth(i).boundingBox())!.width));
+  expect(Math.abs(w1! - w2!)).toBeLessThanOrEqual(2);
   expect(errors).toEqual([]);
 });
 

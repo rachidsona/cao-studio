@@ -10,6 +10,7 @@
 import { cornerSide, wallCornerSide } from "../../document/kitchen-corners";
 import { FRONT, kitchenSizes, runAt, zoneSpan, type KitchenRun, type RunGeometry } from "../../document/kitchen-plan-shapes";
 import type { HandAppliance } from "../../document/kitchen-hand-appliances";
+import { slideRoom } from "../../document/kitchen-slide";
 import type { KitchenFloorPlan, Vec3 } from "../../document/types";
 import type { KitchenBox } from "../../features/kitchen-layout";
 import { applianceOf, heldUnits, isFiller, itemSize, openRoom, SURROUND, surroundFridge, type Placed, type RunFill } from "../../features/kitchen-run-items";
@@ -260,7 +261,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
     const picked = host.picked?.includes(pl.item.id) ?? false;
     if (picked) group.setAttribute("data-picked", "");
     group.innerHTML = `<title>${escapeHtml(label)}</title>${body}${chosen || picked ? rect(0, 0, pl.item.width, height, picked ? "fill-sky-400/25" : "fill-none", `stroke="${BRASS}" stroke-width="3"`) : ""}${widthText(pl, height)}`;
-    drag(node, group, pl, row, host, (event) => host.pick(pl.item.id, event.shiftKey || event.ctrlKey || event.metaKey));
+    drag(node, group, pl, row, host, (event) => host.pick(pl.item.id, event.shiftKey || event.ctrlKey || event.metaKey), slideRoom(fill, pl.item.id));
     if (host.menu) group.addEventListener("contextmenu", (event) => (event.preventDefault(), host.menu!(pl.item.id, event)));
     if (chosen && host.resize && !applianceOf(pl.item)) handle = () => edge(node, pl, y(z + height), height, host.resize!);
     node.append(group);
@@ -299,7 +300,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
   // A caisson furnished by hand: clicked, chosen; dragged, moved as a unit is.
   for (const held of node.querySelectorAll<SVGGElement>("[data-held]")) {
     const pl = fill.spaces.find((q) => q.item.id === held.getAttribute("data-held"))!;
-    if (host.pickOther) drag(node, held, pl, row, host, () => host.pickOther!({ kind: "caisson", id: pl.item.id }), 0);
+    if (host.pickOther) drag(node, held, pl, row, host, () => host.pickOther!({ kind: "caisson", id: pl.item.id }), slideRoom(fill, pl.item.id), 0);
   }
   // The plinths, over the units' feet: clicked, chosen (set back, taken away, given a look) — all those of the run together.
   if (host.pickOther) {
@@ -359,8 +360,14 @@ function edge(node: SVGSVGElement, pl: Placed, top: number, height: number, resi
   node.append(handle);
 }
 
-/** Pressed and let go where it was: chosen; dragged: put among its row where it is dropped. */
-function drag(node: SVGSVGElement, group: SVGGElement, pl: Placed, row: readonly Placed[], host: StripHost, pick: (event: PointerEvent) => void, origin = pl.at): void {
+/** How near the middle of its free room a unit dragged goes to it (mm). */
+const MIDDLE_SNAP = 60;
+
+/**
+ * Pressed and let go where it was: chosen; dragged: put among its row where it is dropped. In the free room beside it
+ * (`room`: how far it may slide, back and on), the middle of that room is shown, and it goes there when near.
+ */
+function drag(node: SVGSVGElement, group: SVGGElement, pl: Placed, row: readonly Placed[], host: StripHost, pick: (event: PointerEvent) => void, [lo, hi]: [number, number], origin = pl.at): void {
   group.addEventListener("pointerdown", (down) => {
     down.preventDefault();
     down.stopPropagation();
@@ -369,16 +376,28 @@ function drag(node: SVGSVGElement, group: SVGGElement, pl: Placed, row: readonly
     const start = x(down);
     let moved = false;
     group.setPointerCapture?.(down.pointerId);
+    // The middle of the free room: where the unit's middle stands when the room is shared alike on both sides.
+    const mid = (lo + hi) / 2;
+    const guide = document.createElementNS(SVG, "g");
+    const shift = (event: PointerEvent) => (hi - lo >= 1 && Math.abs(x(event) - start - mid) < MIDDLE_SNAP ? mid : x(event) - start);
     const motion = (event: PointerEvent) => {
-      const dx = x(event) - start;
-      if (Math.abs(dx) > 20) moved = true;
+      const dx = shift(event);
+      if (Math.abs(x(event) - start) > 20) moved = true;
       group.setAttribute("transform", `translate(${origin + dx} ${group.transform.baseVal.consolidate()?.matrix.f ?? 0})`);
+      if (!moved || hi - lo < 1) return;
+      const at = pl.at + pl.item.width / 2 + mid;
+      const on = dx === mid;
+      const { y: top, height } = node.viewBox.baseVal;
+      guide.setAttribute("data-strip-middle", on ? "on" : "");
+      guide.innerHTML = `<line x1="${at}" y1="${top}" x2="${at}" y2="${top + height}" stroke="${BRASS}" stroke-width="${on ? 3 : 1.5}" stroke-dasharray="${on ? "" : "12 10"}" vector-effect="non-scaling-stroke"/><text x="${at}" y="${top + 70}" text-anchor="middle" font-size="70" fill="${BRASS}">milieu ${Number((((hi - lo) / 2) / 10).toFixed(1)).toLocaleString("fr-FR")} cm de chaque côté</text>`;
+      if (!guide.isConnected) node.append(guide);
     };
     const up = (event: PointerEvent) => {
       group.removeEventListener("pointermove", motion);
       group.removeEventListener("pointerup", up);
+      guide.remove();
       if (!moved) return pick(event);
-      const by = x(event) - start;
+      const by = shift(event);
       const middle = pl.at + by + pl.item.width / 2;
       // The units of its row and the caissons furnished by hand there: their order.
       const others = row.filter((o) => o.row === pl.row && o.item.id !== pl.item.id);
