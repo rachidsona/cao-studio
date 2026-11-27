@@ -378,3 +378,37 @@ test("électroménager : un caisson poussé emporte le four posé dedans", async
   expect(oven.origin[0] - cabinet.origin[0]).toBeCloseTo((600 - 595) / 2, 3);
   expect(errors).toEqual([]);
 });
+
+test("réseau jusqu'à… : la dernière copie arrive à la face cliquée, la distance se calcule", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-reseau-jusqua");
+  await page.getByRole("tab", { name: "Cuisine", exact: true }).click();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await page.locator('[data-unit="base-bas-1-porte-600"]').click();
+  await expect(page.getByText(/Bas 1 porte 600 ajouté/).first()).toBeVisible();
+  await page.getByRole("tab", { name: "Hauts" }).click();
+  await page.locator('[data-unit="wall-haut-1-porte-600"]').click();
+  await expect(page.getByText(/Haut 1 porte 600 ajouté/).first()).toBeVisible();
+  await click(page, '[data-workshop="kitchen-units"]');
+  await click(page, '[data-action="view"][data-view="front"]');
+  await page.keyboard.press("Escape");
+  await click(page, '[data-action="array"]');
+  const tool = page.getByRole("dialog", { name: "Réseau" });
+  await tool.getByRole("combobox", { name: "Placement" }).selectOption("spread");
+  await tool.getByRole("combobox", { name: "Axe" }).selectOption("2");
+  const distance = tool.getByLabel("Distance", { exact: true });
+  const before = await distance.inputValue();
+  // « Jusqu'à… », then the base unit's door low down: the last copy's bottom there, below.
+  await tool.locator("[data-array-arrival]").click();
+  await expect(tool.locator("[data-array-arrival]")).toHaveAttribute("aria-pressed", "true");
+  const canvas = (await page.locator("canvas").first().boundingBox())!;
+  await page.waitForTimeout(800);
+  await page.mouse.click(canvas.x + canvas.width * 0.505, canvas.y + canvas.height * 0.85);
+  await expect(tool.locator("[data-array-arrival]")).toHaveAttribute("aria-pressed", "false");
+  await expect(distance).not.toHaveValue(before);
+  await expect(distance).toHaveValue(/^-\d/);
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/reseau-jusqua.png` });
+  expect(errors).toEqual([]);
+});

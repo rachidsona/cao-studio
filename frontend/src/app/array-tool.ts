@@ -10,7 +10,9 @@ import { arrayOffsets, type ArrayFeature, type Axis, type Feature, type Vec3 } f
 import { formatLength } from "../measurements/units";
 import { moveSketchPlane } from "../sketcher/move";
 import { sketchBox } from "../sketcher/sketch-transform";
+import { el } from "../ui/dom";
 import { AXIS_OPTIONS, boxOfBodies, freshFeatureIds, unionBox } from "./curic-common";
+import { edgePicked, facePicked } from "./measure-shapes";
 import { PanelTool, type ToolContext } from "./panel-tool";
 
 const COUNTS: [string, string][] = Array.from({ length: 30 }, (_, i): [string, string] => [String(i + 1), String(i + 1)]);
@@ -34,6 +36,15 @@ interface Direction {
 
 const dominantAxis = (v: Vec3): Axis => v.map(Math.abs).indexOf(Math.max(...v.map(Math.abs))) as Axis;
 
+/**
+ * How far the last copy goes for it to arrive at `at` along the axis (mm): past the far side of what is copied, that
+ * side there; before its near side (or its middle), its near side there — the other way.
+ */
+export function arrivalOffset(box: [Vec3, Vec3], axis: Axis, at: number): number {
+  const [lo, hi] = [box[0][axis] as number, box[1][axis] as number];
+  return Number((at >= (lo + hi) / 2 ? at - hi : at - lo).toFixed(4));
+}
+
 export class ArrayTool extends PanelTool {
   private readonly id: string;
   private readonly name: string;
@@ -47,6 +58,8 @@ export class ArrayTool extends PanelTool {
   private angle = 90;
   private fullCircle = true;
   private pivot: Vec3 | null = null;
+  /** The direction whose last copy arrives where the next click is (a corner, an edge, a face). */
+  private arriving: Direction | null = null;
 
   constructor(ctx: ToolContext, editing: ArrayFeature | null, selected: string[], sketches: string[] = [], kind: Kind = "line") {
     super(ctx, kind === "rect" ? "Réseau rectangulaire" : "Réseau", editing);
@@ -79,10 +92,15 @@ export class ArrayTool extends PanelTool {
     this.d2.distance = this.d2.step * this.d2.count;
   }
 
+  /** The box round what is copied, bodies and sketches. */
+  private box(): [Vec3, Vec3] | null {
+    const doc = this.ctx.doc();
+    return unionBox([boxOfBodies(this.ctx.viewport, this.targets), ...this.sketches.map((id) => findFeature(doc, id)).map((f) => (f?.type === "sketch" ? sketchBox(f) : null))]);
+  }
+
   /** Size of what is copied along an axis (mm). */
   private extent(axis: Axis): number {
-    const doc = this.ctx.doc();
-    const box = unionBox([boxOfBodies(this.ctx.viewport, this.targets), ...this.sketches.map((id) => findFeature(doc, id)).map((f) => (f?.type === "sketch" ? sketchBox(f) : null))]);
+    const box = this.box();
     return box ? Number(Math.max((box[1][axis] as number) - (box[0][axis] as number), 1).toFixed(4)) : 100;
   }
 
@@ -189,6 +207,7 @@ export class ArrayTool extends PanelTool {
       this.place === "step"
         ? this.numberRow("Pas", d.step, unit, (v) => ((d.step = v), this.changed()), true)
         : this.numberRow("Distance", d.distance, unit, (v) => ((d.distance = v), this.changed()), true),
+      this.arrivalButton(d),
       this.place === "spread" && d.count > 0 ? this.info(`Une copie tous les ${formatLength(Math.abs(length), unit)}.`) : null,
     ];
   }
@@ -254,7 +273,47 @@ export class ArrayTool extends PanelTool {
     ];
   }
 
+  /** « Jusqu'à… »: the next click in the view, a corner, an edge or a face, is where the last copy arrives. */
+  private arrivalButton(d: Direction): HTMLElement {
+    const on = this.arriving === d;
+    const button = el("button", { type: "button", class: `h-8 border px-2 text-xs ${on ? "border-sky-500 bg-sky-50 text-sky-800 dark:bg-sky-950 dark:text-sky-100" : "border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"}`, "aria-pressed": String(on), "data-array-arrival": "" }, on ? "Cliquez un point, une arête ou une face…" : "Jusqu'à… (point, arête ou face)");
+    button.addEventListener("click", () => {
+      this.arriving = on ? null : d;
+      this.render();
+    });
+    return button;
+  }
+
+  /** Where along the axis the corner, the edge or the face under the pointer is (not a copy being shown). */
+  private arrivalAt(event: PointerEvent, axis: Axis): number | null {
+    const viewport = this.ctx.viewport;
+    const copy = (id: string) => id.startsWith(`${this.id}#`);
+    const vertex = viewport.pickVertex(event);
+    if (vertex && !copy(vertex.bodyId)) return vertex.point[axis] as number;
+    const edge = viewport.pickEdge(event);
+    const face = edge && !copy(edge.bodyId) ? null : viewport.pickFace(event, copy);
+    const mesh = viewport.bodyMesh(edge && !copy(edge.bodyId) ? edge.bodyId : (face?.bodyId ?? ""));
+    const picked = mesh ? (edge && !copy(edge.bodyId) ? edgePicked(mesh, edge.edgeIndex) : face ? facePicked(mesh, face.faceIndex) : null) : null;
+    if (!picked) return null;
+    const along = picked.outline.flat().map((p) => p[axis] as number);
+    const [lo, hi] = [Math.min(...along), Math.max(...along)];
+    // Square to the axis: where it is; else where it was clicked (a face), or its middle (an edge).
+    return hi - lo < 0.01 ? lo : face ? (face.point.toArray()[axis] as number) : (lo + hi) / 2;
+  }
+
   protected override click(event: PointerEvent): void {
+    if (this.arriving) {
+      const d = this.arriving;
+      const at = this.arrivalAt(event, d.axis);
+      const box = this.box();
+      if (at === null || !box) return;
+      const offset = arrivalOffset(box, d.axis, at);
+      this.arriving = null;
+      if (this.place === "spread") d.distance = offset;
+      else d.step = Number((offset / Math.max(d.count, 1)).toFixed(4));
+      this.changed();
+      return;
+    }
     const target = this.ctx.viewport.hoverTargetForTool(event);
     if (!target) return;
     if (target.kind === "sketch" && this.editing) return;

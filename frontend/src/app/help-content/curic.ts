@@ -68,6 +68,7 @@ export const CURIC: HelpFamily[] = [
           "Choisissez le « Type » : « Linéaire (une direction) », « Rectangulaire (deux directions) » ou « Circulaire (autour d'un axe) ».",
           "Choisissez le « Placement » : « Un pas entre copies (*n) » ou « Réparties sur une distance (/n) ».",
           "Réglez l'« Axe », les « Copies » (ou la « Quantité ») et le « Pas » (ou la « Distance ») : c'est enregistré aussitôt.",
+          "Ou cliquez « Jusqu'à… (point, arête ou face) », puis un coin, une arête ou une face dans la vue : la dernière copie y arrive, et le pas (ou la distance) se calcule.",
         ],
         tip: "Un pas négatif va de l'autre côté. En cercle, seuls les corps sont copiés, autour d'un axe qui passe par leur centre.",
       },

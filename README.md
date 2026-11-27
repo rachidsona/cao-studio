@@ -1512,7 +1512,10 @@ opération existante.
 - **Réseau** (groupe « Modifier », comme les « *n » et « /n » de Curic DIO) : copies répétées des corps et esquisses choisis
   le long de X, Y ou Z — avec un **pas** entre copies (une étagère tous les 32 cm), ou **réparties sur une distance**
   (3 copies sur 60 cm : une tous les 20 cm). 1 à 30 copies ; le pas proposé est la taille de ce qui est copié (copies
-  accolées). Les originaux restent ; les copies de corps s'appellent « … — Réseau 1 (2) », celles d'esquisses
+  accolées). **« Jusqu'à… (point, arête ou face) »** sous le pas ou la distance, puis un clic dans la vue : la dernière
+  copie arrive au coin, à l'arête ou à la face cliqués — plus loin que ce qui est copié, son côté loin y arrive ; en deçà,
+  son côté près, de l'autre côté (pas négatif) ; une face ou une arête de biais, là où elle est cliquée (`arrivalOffset`).
+  Les originaux restent ; les copies de corps s'appellent « … — Réseau 1 (2) », celles d'esquisses
   « … (copie 2) ». Une seule annulation ; le réseau se modifie depuis l'historique.
   **Réseau rectangulaire** (bouton dans le groupe « Créer », comme le réseau rectangulaire de Fusion) : une grille sur
   **deux directions**, chacune avec son axe, sa quantité (l'original compris : 3 = 2 copies) et son pas ou sa distance

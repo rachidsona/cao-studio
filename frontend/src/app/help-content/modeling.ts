@@ -86,7 +86,7 @@ export const MODELING: HelpFamily[] = [
         steps: [
           "Sélectionnez les corps ou les esquisses, puis cliquez « Réseau rectangulaire ». Sans sélection, le dernier corps est pris ; cliquez dans la vue pour en ajouter ou en retirer.",
           "« Placement » : « Un pas entre copies » ou « Réparties sur une distance ».",
-          "« Direction 1 » : choisissez l'« Axe », la « Quantité » et le « Pas » (ou la « Distance »).",
+          "« Direction 1 » : choisissez l'« Axe », la « Quantité » et le « Pas » (ou la « Distance ») — ou « Jusqu'à… » puis un coin, une arête ou une face cliqués : la dernière copie y arrive.",
           "« Direction 2 » : un autre « Axe », sa « Quantité » et son « Pas ».",
           "C'est enregistré dès que le réglage est valable (Ctrl + Z l'annule). « OK » (ou Entrée) garde l'opération et l'outil reste ouvert pour la suivante ; « Terminer » (la croix ✕, Échap) le ferme.",
         ],
