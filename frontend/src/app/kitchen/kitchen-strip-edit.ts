@@ -41,8 +41,8 @@ export function stripWidth(host: Omit<StripEditHost, "setItems" | "setCorners">,
   }
   const joint = jointOf(run, what.side);
   const s = kitchenSizes(plan);
-  const ell = what.row === "base" ? cornerKind(plan, joint) === "l" : wallCornerKind(plan, joint) === "l";
-  // An L's folding door: its arm is the door and the depth before it; another corner: its door, less its gaps.
+  const ell = what.row === "base" ? ["l", "lcase"].includes(cornerKind(plan, joint)) : wallCornerKind(plan, joint) === "l";
+  // An L's folding door (a caisson in L's too): its arm is the door and the depth before it; another corner: its door, less its gaps.
   const key = what.row === "base" ? (ell ? "arm" : "door") : ell ? "wallArm" : "wallDoor";
   const extra = ell ? (what.row === "base" ? s.cabinet : plan.wallDepth) + FRONT + DOOR_GAPS : DOOR_GAPS;
   const limits = cornerLimits(plan)[key];

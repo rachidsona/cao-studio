@@ -161,10 +161,11 @@ export function runStrip(host: StripHost): SVGSVGElement {
         parts.push(`<line x1="${hx}" y1="${y(s.base - 60)}" x2="${hx}" y2="${y(s.base - 260)}" stroke="${BRASS}" stroke-width="3" vector-effect="non-scaling-stroke"/>`);
       }
     }
-    const [a, b] = corner.cabinet ?? [side === "left" ? 0 : g.base[1], side === "left" ? g.base[0] : L];
+    const whole = corner.span;
+    const [a, b] = whole ?? [side === "left" ? 0 : g.base[1], side === "left" ? g.base[0] : L];
     // The corner unit's whole width, dimensioned under it (its gap to the wall left out).
-    const size = corner.cabinet ? ` ${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")} cm` : "";
-    if (corner.cabinet) {
+    const size = whole ? ` ${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")} cm` : "";
+    if (whole) {
       const tick = (x: number) => `<line x1="${x}" y1="${H + 15}" x2="${x}" y2="${H + 75}"/>`;
       parts.push(`<g class="stroke-gray-500 dark:stroke-gray-400" stroke-width="2" vector-effect="non-scaling-stroke" pointer-events="none" data-corner-dim="${side}"><line x1="${a}" y1="${H + 45}" x2="${b}" y2="${H + 45}"/>${tick(a)}${tick(b)}</g>`);
     }

@@ -36,11 +36,13 @@ describe("largeurs de la bande à la calculatrice", () => {
     expect(stripWidth(host, { kind: "corner", side: "left", row: "base", width: 447 }, 800)).toMatch(/La porte va de 29,7 cm à 59,7 cm/);
   });
 
-  it("la porte pliante d'un angle en L : son bras suit", () => {
-    const host = at({ corners: { left: "l" } });
-    const made = stripWidth(host, { kind: "corner", side: "left", row: "base", width: 300 }, 400);
-    if (typeof made === "string" || !("corners" in made)) throw new Error(String(made));
-    const door = cornerSide({ ...host.plan, ...made.corners }, host.run, "left")!.fronts.find((f) => f.kind === "door")!;
-    expect(door.to - door.from).toBeCloseTo(400, 6);
+  it("la porte pliante d'un angle en L, ou d'un caisson d'angle en L : son bras suit", () => {
+    for (const kind of ["l", "lcase"] as const) {
+      const host = at({ corners: { left: kind } });
+      const made = stripWidth(host, { kind: "corner", side: "left", row: "base", width: 300 }, 400);
+      if (typeof made === "string" || !("corners" in made)) throw new Error(String(made));
+      const door = cornerSide({ ...host.plan, ...made.corners }, host.run, "left")!.fronts.find((f) => f.kind === "door")!;
+      expect(door.to - door.from, kind).toBeCloseTo(400, 6);
+    }
   });
 });

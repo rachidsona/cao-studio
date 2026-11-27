@@ -159,10 +159,11 @@ test("angles : chaque angle se choisit dans le linéaire ou dans Meubles de cuis
   await expect(page.locator('[title="Meuble d\'angle en biais A — porte en biais — OK"]').first()).toBeAttached({ timeout: 60_000 });
   await expect(page.locator('[title="Meuble d\'angle en biais A — dessous — OK"]').first()).toBeAttached();
   await expect(page.locator('[data-ref="status-recompute"]')).toHaveText(/^Recalcul \d+ ms$/);
-  // One caisson in L: its boards in L, two shelves, a back on each wall, a folding door, built by the kernel.
+  // One caisson in L: its boards in L, two shelves, a back on each wall, its sides notched, the runs' folding door, built by the kernel.
   await page.locator('[data-corner-choice="right"] [data-corner-kind="lcase"]').click();
   await expect(page.locator('[title="Caisson d\'angle en L A (droite) — dessous — OK"]').first()).toBeAttached({ timeout: 60_000 });
-  await expect(page.locator('[title="Caisson d\'angle en L A (droite) — porte pliante (2) — OK"]').first()).toBeAttached();
+  await expect(page.locator('[title="Porte pliante A (droite) — OK"]').first()).toBeAttached();
+  await expect(page.locator('[title="Caisson d\'angle en L A (droite) — côté — OK"]').first()).toBeAttached();
   await expect(page.locator('[title="Caisson d\'angle en L A (droite) — fond (2) — OK"]').first()).toBeAttached();
   await expect(page.locator('[title="Caisson d\'angle en L A (droite) — étagère 2 — OK"]').first()).toBeAttached();
   await expect(page.locator('[data-ref="status-recompute"]')).toHaveText(/^Recalcul \d+ ms$/);
@@ -480,6 +481,13 @@ test("angles : la porte du meuble d'angle se règle, et un haut d'angle se pose 
   await tool.locator("[data-run-close]").click();
   await expect(page.getByText("Meuble d'angle A")).toHaveCount(0, { timeout: 60_000 });
   await expect(page.getByText("Haut d'angle A")).toHaveCount(0);
+  // A caisson in L, as the L corner unit: its whole arm dimensioned under it, its folding door's leaf and its width.
+  await tool.locator('[data-open-run="A"]').click();
+  await unfold(tool, "corners");
+  await corner.locator('[data-corner-kind="lcase"]').click();
+  await expect(strip.locator('[data-corner-total="left"]')).toHaveText(/angle ✓ 92 cm$/);
+  await expect(strip.locator('[data-corner-dim="left"]')).toHaveCount(1);
+  await expect(strip.locator('[data-corner-front="door"]')).toHaveCount(1);
   expect(errors).toEqual([]);
 });
 

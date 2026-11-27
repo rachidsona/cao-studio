@@ -7,8 +7,8 @@
  * - l'**angle en biais** : un caisson pentagone sur les deux murs (90 × 90 d'origine), dessous, étagère et dessus en
  *   pentagone, deux côtés, une porte à 45° et sa plinthe ; un morceau de plan de travail en triangle couvre son devant.
  * - le **caisson d'angle en L** : un seul caisson sur les deux murs (90 × 90 d'origine), dessous, deux étagères et dessus
- *   en L, un fond contre chaque mur, un côté au bout de chaque bras, une porte pliante (un battant devant chaque bras)
- *   et sa plinthe en L ; le plan de travail des deux linéaires le couvre.
+ *   en L, un fond contre chaque mur, un côté au bout de chaque bras, jusqu'au sol, entaillé pour la plinthe ; sa porte
+ *   pliante (un battant devant chaque bras), sa plinthe et le plan de travail sont ceux des linéaires, comme au meuble en L.
  * Chaque planche est une pièce du plan (document/kitchen-plan.ts dessine son contour à plat et le monte en hauteur) ;
  * le débit la compte dans son rectangle. Pur.
  */
@@ -83,7 +83,9 @@ export function roundedWorktop(at: At, [a, b]: [number, number], [u0, u1]: [numb
  * passes: `u` along it from the corner's wall, `a` off its back towards the room), from `z0` up to `z1`; its socle
  * `socle` high; `front` the fronts' thickness; `top` the worktop's depth, `z2` its top: the triangle of worktop over its front.
  */
-export function diagonalCorner(name: string, at: At, arm: number, depth: number, [z0, z1]: [number, number], socle: number, front: number, [top, z2, thick]: [number, number, number], box: BoxOf): void {
+export function diagonalCorner(name: string, at: At, arm: number, depth: number, [z0, z1]: [number, number], socle: number, front: number, [top, z2, thick]: [number, number, number], own: BoxOf): void {
+  // Marked as the corner's: built even on a run with nothing else on it yet.
+  const box: BoxOf = (n, k, where, extra) => own(n, k, where, { ...extra, corner: true });
   const plate = (label: string, z: number, inner = 0) => {
     const pts: [number, number][] = [[0, 0], [arm - inner, 0], [arm - inner, depth + inner], [depth + inner, arm - inner], [0, arm - inner]];
     const s = shaped(at, pts, z, z + T);
@@ -114,31 +116,37 @@ export function diagonalCorner(name: string, at: At, arm: number, depth: number,
 /**
  * A caisson in L, its arms `arm` long on both walls from the corner, `depth` deep (as `diagonalCorner`): bottom, two
  * shelves and top in L, a back against each wall (between bottom, top and the sides, as thin as the units' backs), a
- * side at the end of each arm, a folding door — a leaf in front of each arm — and its plinth in L.
+ * side at the end of each arm down to the floor, notched at its front over `socle` for the plinth (`notch` deep, at the
+ * end of the arm of the run that passes, and of the other's; 0: square). Its folding door and its plinth are the runs'
+ * (document/kitchen-plan-build.ts, from its corner's fronts), as the L corner unit's.
  */
-export function lCorner(name: string, at: At, arm: number, depth: number, [z0, z1]: [number, number], socle: number, front: number, _worktop: [number, number, number], box: BoxOf): void {
+export function lCorner(name: string, at: At, arm: number, depth: number, [z0, z1]: [number, number], notch: [number, number], box: BoxOf): void {
+  const put: BoxOf = (label, kind, where, extra) => box(`${name} — ${label}`, kind, where, { ...extra, corner: true, carcass: true });
   const plate = (label: string, z: number, inner = 0, back = 0) => {
     const s = shaped(at, [[back, back], [arm - inner, back], [arm - inner, depth], [depth, depth], [depth, arm - inner], [back, arm - inner]], z, z + T);
-    box(`${name} — ${label}`, "panel", s.at, { outline: s.outline, carcass: true });
+    put(label, "panel", s.at, { outline: s.outline });
   };
-  plate("dessous", z0);
-  // The shelves between the sides, in front of the backs, at a third and two thirds.
+  // The bottom between the sides; the shelves too, in front of the backs, at a third and two thirds.
+  plate("dessous", z0, T);
   for (const k of [1, 2]) plate(`étagère ${k}`, z0 + ((z1 - z0) * k) / 3 - T / 2, T, BACK);
   plate("dessus", z1 - T);
-  const piece = (label: string, kind: KitchenBox["kind"], pts: [number, number][], [h0, h1]: [number, number], extra: Partial<KitchenBox> = {}) => {
-    const s = shaped(at, pts, h0, h1);
-    box(`${name} — ${label}`, kind, s.at, { outline: s.outline, ...extra });
+  /** A side from the wall (`w`) to the front, across `c`…`c + T`: its outline seen from its face, the notch cut out. */
+  const side = (label: string, onU: boolean, c: number, cut: number) => {
+    const p = (w: number, k: number) => (onU ? at(c + k, w) : at(w, c + k));
+    const [q0, q1] = [p(0, 0), p(depth, T)];
+    const axis = Math.abs(p(1, 0)[0] - p(0, 0)[0]) > 0.5 ? 0 : 1;
+    const x = (w: number) => p(w, 0)[axis]!;
+    const n = z0 > 0 && cut > 0 ? Math.min(cut, depth - T) : 0;
+    const points: [number, number][] = n ? [[x(0), 0], [x(depth - n), 0], [x(depth - n), z0], [x(depth), z0], [x(depth), z1 - T], [x(0), z1 - T]] : [[x(0), 0], [x(depth), 0], [x(depth), z1 - T], [x(0), z1 - T]];
+    put(label, "panel", [[Math.min(q0[0], q1[0]), Math.min(q0[1], q1[1]), 0], [Math.max(q0[0], q1[0]), Math.max(q0[1], q1[1]), z1 - T]], { profile: { along: axis as 0 | 1, points } });
   };
-  piece("côté", "panel", [[arm - T, 0], [arm, 0], [arm, depth], [arm - T, depth]], [z0 + T, z1 - T], { carcass: true });
-  piece("côté (2)", "panel", [[0, arm - T], [depth, arm - T], [depth, arm], [0, arm]], [z0 + T, z1 - T], { carcass: true });
+  side("côté", true, arm - T, notch[0]);
+  side("côté (2)", false, arm - T, notch[1]);
   // A back against each wall, the first through the corner, in the units' backs' board.
-  piece("fond", "panel", [[0, 0], [arm - T, 0], [arm - T, BACK], [0, BACK]], [z0 + T, z1 - T], { material: "hdf" });
-  piece("fond (2)", "panel", [[0, BACK], [BACK, BACK], [BACK, arm - T], [0, arm - T]], [z0 + T, z1 - T], { material: "hdf" });
-  // The folding door: a leaf before each arm, as the L corner unit's (from the front of the other arm).
-  const [d0, d1] = [depth + front + 1.5, arm - 1.5];
-  piece("porte pliante", "panel", [[d0, depth], [d1, depth], [d1, depth + front], [d0, depth + front]], [z0 + 1.5, z1 - 1.5]);
-  piece("porte pliante (2)", "panel", [[depth, d0], [depth + front, d0], [depth + front, d1], [depth, d1]], [z0 + 1.5, z1 - 1.5]);
-  // The plinth in L, set back under the doors.
-  const [k0, k1] = [depth + front - 76, depth + front - 60];
-  piece("plinthe", "kick", [[k0, k0], [arm, k0], [arm, k1], [k1, k1], [k1, arm], [k0, arm]], [0, socle - 3]);
+  const back = (label: string, pts: [number, number][]) => {
+    const s = shaped(at, pts, z0 + T, z1 - T);
+    box(`${name} — ${label}`, "panel", s.at, { outline: s.outline, corner: true, material: "hdf" });
+  };
+  back("fond", [[0, 0], [arm - T, 0], [arm - T, BACK], [0, BACK]]);
+  back("fond (2)", [[0, BACK], [BACK, BACK], [BACK, arm - T], [0, arm - T]]);
 }

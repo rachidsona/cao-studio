@@ -7,7 +7,7 @@
  * (`run`). Le triangle d'activité et le reste de l'ergonomie suivent (features/kitchen-appliances.ts). Pur.
  */
 import { cabinetAxes } from "./kitchen-catalog";
-import { cornerSide, kickOf, wallCornerSide, type CornerSide } from "./kitchen-corners";
+import { cornerNotches, cornerSide, kickOf, wallCornerSide, type CornerSide } from "./kitchen-corners";
 import { FRONT, jointOf, kitchenRuns, kitchenSizes, lArm, runAt, runGeometry, skewNotes, wallCorner, zoneSpan, type KitchenRun } from "./kitchen-plan-shapes";
 import type { CornerDoorLook, KitchenFloorPlan, Vec3 } from "./types";
 import { ergonomics } from "../features/kitchen-appliances";
@@ -187,7 +187,7 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     fill.fillers.forEach(([a, b], i) => box(`Fileur ${run.id}${i ? i + 1 : ""}`, "filler", band(a, b, D, D + FRONT, s.plinth, s.base)));
     // The run's corner units, along it: the worktop lies over them as over its units.
     const cornerUnits = (["left", "right"] as const).flatMap((side, i): [number, number][] => {
-      const c = cornerSide(p, run, side, fill.walls[i])?.cabinet;
+      const c = cornerSide(p, run, side, fill.walls[i])?.span;
       return c ? [[c[0], c[1]]] : [];
     });
     corners(p, run, fill.walls, g.wall !== null, band, box, cabinet);
@@ -257,7 +257,7 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
     const corner = cornerSide(p, run, side, off[side === "left" ? 0 : 1]);
     const door = { door: { hinge: (side === "left" ? along : along.map((c) => -c)) as Vec3, out } };
     if (!corner) continue;
-    const unit = corner.cabinet ? { corner: true } : {};
+    const unit = corner.cabinet || corner.span ? { corner: true } : {};
     const joint = jointOf(run, side);
     const pass = run[side] === "pass";
     const lowEdit = corner.kind === "l" || corner.kind === "carousel" ? { joint, key: "arm" as const, less: pass ? 0 : -D } : { joint, key: "door" as const, less: s.corner };
@@ -277,8 +277,8 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
     if ((corner.kind === "diagonal" || corner.kind === "lcase") && pass) {
       const L = run.length;
       const at = (u: number, a: number) => runAt(run, side === "left" ? u : L - u, run.back + a);
-      // Marked as the corner's: built even on a run with nothing else on it yet.
-      (corner.kind === "lcase" ? lCorner : diagonalCorner)(corner.name, at, lArm(p, joint), D, [s.plinth, s.base], s.plinth, FRONT, [run.zone.run.depth, p.worktopHeight, p.worktopHeight - s.base], (name, kind, where, extra) => box(name, kind, where, { ...extra, corner: true }));
+      if (corner.kind === "lcase") lCorner(corner.name, at, lArm(p, joint), D, [s.plinth, s.base], cornerNotches(p, run, side), box);
+      else diagonalCorner(corner.name, at, lArm(p, joint), D, [s.plinth, s.base], s.plinth, FRONT, [run.zone.run.depth, p.worktopHeight, p.worktopHeight - s.base], box);
     }
     if (corner.cabinet) cabinet(corner.name, corner.cabinet[0], corner.cabinet[1] - corner.cabinet[0], D, 0, s.base, { plinth: s.plinth, shelves: corner.shelves, ...lowDoor, corner: true, cornerEdit: lowEdit });
     for (const f of corner.fronts) {
