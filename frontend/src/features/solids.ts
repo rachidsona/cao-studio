@@ -6,7 +6,7 @@
 import { basicFaceExtrusion, drawRectangle, measureArea, Plane, Vector, type ChamferRadius, type Edge, type Face, type Shape3D } from "replicad";
 import { AXIS_X, AXIS_Y } from "../document/sketch";
 import type { ChamferFeature, CombineFeature, ExtrudeFeature, FilletFeature, RevolveFeature } from "../document/types";
-import { GeometryError, requireSingleValidSolid } from "../geometry/kernel";
+import { GeometryError, isShapeValid, requireSingleValidSolid } from "../geometry/kernel";
 import { resolveEdges, resolveFace, resolveFacePlane } from "../geometry/references";
 import { prismUntil } from "./face-until";
 import { frameOf, toWorld } from "../sketcher/frame";
@@ -104,6 +104,7 @@ export function buildChamfer(feature: ChamferFeature, lookup: OutputLookup): Sol
 export function buildCombine(feature: CombineFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
   if (feature.tools.length === 0) throw new GeometryError(`${feature.name} : choisissez au moins un corps outil.`);
   if (feature.tools.includes(feature.target)) throw new GeometryError(`${feature.name} : le corps cible ne peut pas être aussi un outil.`);
+  if (feature.operation === "exclude") return buildExclude(feature, lookup);
   let current = requireSolid(lookup, feature.target).shape;
   let owned = false;
   try {
@@ -127,6 +128,35 @@ export function buildCombine(feature: CombineFeature, lookup: OutputLookup): Sol
     throw new GeometryError(`${feature.name} : ${count === 0 ? "résultat vide" : messages[feature.operation]}.`);
   }
   return { kind: "solid", shape: requireSingleValidSolid(current, feature.name) };
+}
+
+/**
+ * « Sans le commun »: what the target and the tools have in common taken away from each of them, all kept — the
+ * target less the tools, each tool less the target; a body cut in two gives its pieces.
+ */
+function buildExclude(feature: CombineFeature, lookup: OutputLookup): SolidOutput | SolidsOutput {
+  const target = requireSolid(lookup, feature.target).shape;
+  const tools = feature.tools.map((id) => requireSolid(lookup, id).shape);
+  const made: Shape3D[] = [];
+  try {
+    let rest = target.clone() as Shape3D;
+    for (const tool of tools) {
+      const next = rest.cut(tool);
+      rest.delete();
+      rest = next;
+    }
+    made.push(rest);
+    for (const tool of tools) made.push(tool.cut(target));
+    const parts = made.flatMap((shape) => shape.solids.map((s) => s.clone() as Shape3D));
+    if (!parts.length) throw new GeometryError(`${feature.name} : résultat vide.`);
+    if (!parts.every(isShapeValid)) {
+      for (const part of parts) part.delete();
+      throw new GeometryError(`${feature.name} : un des solides obtenus est invalide.`);
+    }
+    return parts.length === 1 ? { kind: "solid", shape: parts[0]! } : { kind: "solids", shapes: parts };
+  } finally {
+    for (const shape of made) shape.delete();
+  }
 }
 
 /** The slab between the planes square to the edge `from`–`to` through its two ends (wide enough for any body). */

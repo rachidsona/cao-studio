@@ -2,7 +2,7 @@
 import type { Edge, Face, Shape3D } from "replicad";
 import { beforeAll, describe, expect, it } from "vitest";
 import { centeredRectangle, rectangleAt, AXIS_Y, type SketchGeometry } from "../../frontend/src/document/sketch";
-import { createReferencePlate, type CadDocument, type EdgeRef, type Feature } from "../../frontend/src/document/types";
+import { consumedBodies, createReferencePlate, type CadDocument, type EdgeRef, type Feature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { bodyMetrics } from "../../frontend/src/geometry/kernel";
 import { describeEdge, describeFace } from "../../frontend/src/geometry/references";
@@ -140,6 +140,24 @@ describe("combinaison de corps et extrusion en intersection", () => {
     // Block A: x −10..10, block B: x 0..20.
     const d = doc(...box("A", 0, 20), ...box("B", 10, 20), { id: "cb", type: "combine", name: "Combinaison", target: "eA", tools: ["eB"], operation });
     expect(volume(d, "cb").volume).toBeCloseTo(expected, 6);
+  });
+
+  it("sans le commun : chaque bloc perd la partie commune, les deux restent, la cible et l'outil consommés", () => {
+    // Block A: x −10..10, block B: x 0..20; in common x 0..10.
+    const d = doc(...box("A", 0, 20), ...box("B", 10, 20), { id: "cb", type: "combine", name: "Combinaison", target: "eA", tools: ["eB"], operation: "exclude" });
+    const r = new Recomputer();
+    try {
+      const result = r.recompute(d);
+      expect(result.statuses.find((s) => s.id === "cb")?.state).toBe("ok");
+      const out = r.output("cb");
+      expect(out?.kind).toBe("solids");
+      const shapes = out?.kind === "solids" ? out.shapes : [];
+      expect(shapes.map((s) => Math.round(bodyMetrics(s).volume))).toEqual([10 * 20 * 10, 10 * 20 * 10]);
+      expect(consumedBodies(d.features.at(-1)!)).toEqual(["eA", "eB"]);
+    } finally {
+      r.dispose();
+    }
+    expect(() => parseDocument(JSON.parse(JSON.stringify(d)))).not.toThrow();
   });
 
   it("refuse l'union de corps disjoints", () => {

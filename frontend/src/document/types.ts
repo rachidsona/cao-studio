@@ -470,7 +470,8 @@ export interface CombineFeature extends FeatureBase {
   type: "combine";
   target: string;
   tools: string[];
-  operation: "join" | "cut" | "intersect";
+  /** `exclude`: what they have in common taken away from each, all kept (features/solids.ts `buildExclude`). */
+  operation: "join" | "cut" | "intersect" | "exclude";
   /** Keep the tool bodies visible after the operation. */
   keepTools?: boolean;
 }
@@ -1364,7 +1365,7 @@ export function consumedBodies(feature: Feature): string[] {
     case "loft":
       return feature.operation !== "new" && feature.target ? [feature.target] : [];
     case "combine":
-      return feature.keepTools ? [feature.target] : [feature.target, ...feature.tools];
+      return feature.keepTools && feature.operation !== "exclude" ? [feature.target] : [feature.target, ...feature.tools];
     case "sketch":
     case "panels":
     case "cabinet":

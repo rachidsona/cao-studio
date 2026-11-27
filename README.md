@@ -756,7 +756,9 @@ opération existante.
   Apparence.
   - **Comme le Combiner de Fusion 360** : deux champs de sélection, « Corps cible » et « Corps outils » (« 2
     sélectionnés »), celui qui prend le prochain clic cerné de bleu, ✕ pour le vider ; l'opération en trois boutons
-    (∪ Joindre, − Couper, ∩ Intersection) ; la cible marquée en orange, les corps outils en bleu, en rouge pour
+    (∪ Joindre, − Couper, ∩ Intersection) et **⊖ Sans le commun** — la partie que les corps ont en commun ôtée de chacun,
+    tous gardés : la cible moins les outils, chaque outil moins la cible, un corps coupé en deux donnant ses morceaux
+    (`buildExclude` de `features/solids.ts`) ; la cible marquée en orange, les corps outils en bleu, en rouge pour
     Couper. **Rien n'est gardé avant OK** (ou Entrée) ; **Terminer** (Échap, la croix) laisse le modèle tel qu'il était
     (`storesLive` de `app/panel-tool.ts`). OK attend tant que le noyau refuse la combinaison.
 - **Une calculatrice à chaque champ d'un nombre** (`ui/field-keypads.ts`) : tout champ numérique de l'éditeur qui

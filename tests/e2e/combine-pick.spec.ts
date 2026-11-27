@@ -54,6 +54,11 @@ test("combiner des corps : la cible puis les corps outils se cliquent dans la vu
   await tool.locator('[data-combine-op="cut"]').click();
   await expect(tool.locator('[data-combine-op="cut"]')).toHaveAttribute("aria-pressed", "true");
   await expect(view3d).toHaveAttribute("data-chosen", "first remove");
+  // « Sans le commun »: each body loses what it shares with the others, all kept — nothing to keep apart.
+  await tool.locator('[data-combine-op="exclude"]').click();
+  await expect(tool.locator('[data-combine-op="exclude"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(tool).toContainText("Chaque corps perd la partie qu'il a en commun avec les autres");
+  await expect(tool.getByText("Conserver les corps outils")).toHaveCount(0);
   await tool.locator('[data-combine-op="join"]').click();
 
   // Taken away with its ✕, then the list of every body stays folded.
