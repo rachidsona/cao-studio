@@ -180,6 +180,19 @@ describe("habillage de réfrigérateur dans le Plan de cuisine", () => {
     const step = partitionOf(tall.doc.features.find((f) => f.id === made.sketch) as never)!.step;
     expect(step.kind === "partition" && step.input.height).toBe(670);
     expect(kitchenPlanIn(tall.doc, base.id)!.runs!.A![0]).toMatchObject({ height: 2500, furnished: made.sketch });
+    // As high as the wall units: with a casquette of caissons it rises to their top, its caisson with it; without, back down.
+    const { kitchenSizes } = await import("../../frontend/src/document/kitchen-plan-shapes");
+    const top = kitchenSizes(plan).wallTop;
+    const level = withSurroundHeight(made.doc, base.id, "A", item, top);
+    if (typeof level === "string") throw new Error(level);
+    const caisson = (doc: CadDocument) => partitionOf(doc.features.find((f) => f.id === made.sketch) as never)!.step;
+    const capped = withKitchenBuilt(level.doc, base.id, { cap: "units", capHeight: 350 });
+    if (typeof capped === "string") throw new Error(capped);
+    expect(sideTop(capped.doc)).toBe(top + 350);
+    expect(caisson(capped.doc).input.height).toBe(top + 350 - 1800 - 30);
+    const bare = withKitchenBuilt(capped.doc, base.id, { cap: undefined });
+    if (typeof bare === "string") throw new Error(bare);
+    expect([sideTop(bare.doc), caisson(bare.doc).input.height]).toEqual([top, top - 1800 - 30]);
   });
 
   it("la hauteur du réfrigérateur se règle : le caisson du dessus prend le reste, jamais moins de 20 cm", () => {

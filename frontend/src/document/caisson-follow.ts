@@ -12,6 +12,7 @@ import type { OffsetRecord } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
 import type { CadDocument, KitchenFloorPlan, KitchenRunItem, PlaneFrame, SketchFeature, Vec3 } from "./types";
 import type { KitchenUnit } from "../features/kitchen-layout";
+import { applianceOf } from "../features/kitchen-run-items";
 import { placePoint } from "../features/room-runs";
 import { nearestPlane } from "../sketcher/frame";
 import { extrusionGroups, isPartition, rebuildChain } from "../sketcher/partition-history";
@@ -50,12 +51,12 @@ export function runFeatures(doc: CadDocument, plan: KitchenFloorPlan, run: strin
 const placed = (plan: KitchenFloorPlan, u: KitchenUnit) => (plan.place ? { origin: placePoint(plan.place, u.origin), rotation: (u.rotation + plan.place.quarter * 90) % 360 } : u);
 
 /** The caisson's Répartition at a new width, on its new frame: its boards made again, each keeping its material. */
-function withCaissonResized(doc: CadDocument, sketch: SketchFeature, frame: PlaneFrame, width: number): { doc: CadDocument; problems: string[] } | string {
+function withCaissonResized(doc: CadDocument, sketch: SketchFeature, frame: PlaneFrame, width: number, height?: number): { doc: CadDocument; problems: string[] } | string {
   const make = (widths: boolean) => {
     const offsets = (sketch.offsets ?? []).map((r) => {
       if (r !== partitionOf(sketch) || r.step?.kind !== "partition") return r;
       const { widths: shares, ...input } = r.step.input;
-      return { ...r, step: { ...r.step, input: { ...input, length: width, ...(widths && shares ? { widths: shares } : {}) } } } as OffsetRecord;
+      return { ...r, step: { ...r.step, input: { ...input, length: width, ...(height ? { height } : {}), ...(widths && shares ? { widths: shares } : {}) } } } as OffsetRecord;
     });
     const moved: SketchFeature = { ...sketch, frame, plane: nearestPlane(frame.normal), offsets };
     return { moved, offsets, rebuilt: rebuildChain(moved, partitionOf(sketch)!.id) };
@@ -91,7 +92,9 @@ export function withCaissonsFollowing(base: CadDocument, plan: KitchenFloorPlan,
     if (sketch?.type !== "sketch" || !sketch.frame || record?.step.kind !== "partition") continue;
     const frame = panelsFrame(placed(plan, u), record.step.depth!);
     const width = record.step.input.length;
-    const resized = Math.abs(width - u.width) >= 0.05;
+    // A fridge surround's caisson as high as its room over the fridge too (the surround rises with a casquette of caissons: itemSize).
+    const height = item?.from && applianceOf({ model: item.from })?.role === "fridge-surround" && Math.abs(record.step.input.height - u.height) >= 0.05 ? u.height : undefined;
+    const resized = Math.abs(width - u.width) >= 0.05 || height !== undefined;
     // Made of a unit of the plan when its sides stopped over the plinth: down to the floor now, as its unit's (notched for the plinth: kick-notches.ts).
     const dated = !!item?.from && record.step.input.outer === "board" && record.step.input.plinth > 0;
     if (!resized && !dated && sameFrame(frame, sketch.frame)) continue;
@@ -99,7 +102,7 @@ export function withCaissonsFollowing(base: CadDocument, plan: KitchenFloorPlan,
     let next: CadDocument;
     if (resized || dated) {
       const source: SketchFeature = dated ? { ...sketch, offsets: sketch.offsets!.map((r) => (r === record ? ({ ...r, step: { ...record.step, input: { ...record.step.input, outer: "side" } } } as OffsetRecord) : r)) } : sketch;
-      const made = withCaissonResized(doc, source, frame, u.width);
+      const made = withCaissonResized(doc, source, frame, u.width, height);
       if (typeof made === "string") {
         problems.push(`${sketch.name} : ${made}`);
         continue;

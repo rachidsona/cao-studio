@@ -2788,7 +2788,9 @@ opération existante.
     devant et un bout à chaque bout libre. Elle prévient quand une porte relevante dessous ne peut plus se lever et
     quand le plafond est trop bas (`document/kitchen-cap.ts`). **Caissons à porte relevante** (sur-meubles) : sur chaque
     meuble haut et chaque bras d'un meuble haut d'angle, droit ou en L (pas la hotte, un fileur ; pas une colonne ni
-    l'habillage de réfrigérateur, qui montent eux-mêmes jusqu'en haut des caissons), un caisson de sa largeur,
+    l'habillage de réfrigérateur, qui montent eux-mêmes jusqu'en haut des caissons — même réglés à une hauteur, quand
+    elle arrive au haut des meubles hauts ; l'habillage aménagé, son caisson du dessus refait avec lui, et redescendu
+    sans les caissons : `itemSize` et `withCaissonsFollowing`), un caisson de sa largeur,
     de la « Profondeur des caissons » (58 cm d'habitude, comme les colonnes, de 30 à 80, contre le mur : il avance devant un haut de 35 ; celui d'un
     angle garde la profondeur des hauts, pour ne pas entrer dans l'autre mur), de la « Hauteur des caissons » choisie (35 cm d'habitude, de 25 à 60), sa porte se levant ; sous un
     plafond trop bas, pas de caisson là et un mot (`capUnits`). Pour poser un caisson à la main : « Casquette

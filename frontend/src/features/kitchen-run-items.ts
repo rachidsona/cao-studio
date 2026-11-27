@@ -132,9 +132,11 @@ export function itemSize(p: KitchenFloorPlan, item: KitchenRunItem, entry: Catal
   }
   // Under a casquette of caissons, a column and a fridge's surround rise to the top of the caissons (none over them).
   const capTop = p.cap === "units" ? s.wallTop + (p.capHeight ?? CAP.unit) : null;
+  // Its own height up to the wall units' top (or higher, under the caissons' top): it rises with the caissons too.
+  const reach = (h?: number) => (h !== undefined && capTop !== null && h >= s.wallTop - 1 && h < capTop ? Math.min(p.height, capTop) : h);
   // A fridge's surround: as high as a freestanding fridge and its caisson ask, as deep as the other columns.
-  if (entry.id.startsWith("app-fridge-surround-")) return { height: item.height ?? Math.min(p.height, capTop ?? SURROUND.height), depth: item.depth ?? own ?? s.cabinet, z: 0 };
-  if (entry.kind === "tall") return { height: item.height ?? Math.min(p.height, capTop ?? s.wallTop), depth: item.depth ?? own ?? s.cabinet, z: 0 };
+  if (entry.id.startsWith("app-fridge-surround-")) return { height: reach(item.height) ?? Math.min(p.height, capTop ?? SURROUND.height), depth: item.depth ?? own ?? s.cabinet, z: 0 };
+  if (entry.kind === "tall") return { height: reach(item.height) ?? Math.min(p.height, capTop ?? s.wallTop), depth: item.depth ?? own ?? s.cabinet, z: 0 };
   return { height: s.base, depth: item.depth ?? own ?? s.cabinet, z: 0 };
 }
 
