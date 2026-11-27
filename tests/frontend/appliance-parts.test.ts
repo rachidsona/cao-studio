@@ -19,7 +19,7 @@ import { setupKernel } from "./kernel-setup";
 /** Each model at each size and finish, and at sizes the kitchen plan gives (a hood under a low ceiling, up to a high one). */
 const every = () => [
   ...APPLIANCE_LIBRARY.flatMap((def) => def.sizes.flatMap(([width, height, depth]) => def.finishes.map((finish) => ({ def, spec: { model: def.id, width, height, depth, finish } })))),
-  ...[["hood-chimney", 598, 250, 500], ["hood-chimney", 898, 1700, 500], ["hood-glass", 598, 260, 380], ["hood-island", 898, 300, 598], ["oven-pyro", 597, 600, 550]].map(([model, width, height, depth]) => ({ def: applianceDef(model as string)!, spec: { model: model as string, width: width as number, height: height as number, depth: depth as number, finish: "inox" } })),
+  ...[["hood-chimney", 598, 250, 500], ["hood-chimney", 898, 1700, 500], ["hood-glass", 598, 260, 380], ["hood-island", 898, 300, 598], ["hood-box", 598, 250, 500], ["hood-vertical", 598, 260, 380], ["hood-pendant", 420, 300, 420], ["oven-pyro", 597, 600, 550]].map(([model, width, height, depth]) => ({ def: applianceDef(model as string)!, spec: { model: model as string, width: width as number, height: height as number, depth: depth as number, finish: "inox" } })),
 ];
 const looks = (model: string, finish: string) => {
   const [width, height, depth] = applianceDef(model)!.sizes[0]!;
@@ -112,6 +112,9 @@ describe("électroménager : les nouveaux modèles se posent à leur place", () 
     expect(applianceSpot(applianceDef("wine-builtin")!, [595, 818, 570], base, 908)).toEqual([2.5, 0, 870 - 818 - 5]);
     expect(applianceSpot(applianceDef("wine-column")!, [595, 1772, 560], tall, 908)).toEqual([2.5, 0, 150 + 18]);
     expect(applianceSpot(applianceDef("hood-island")!, [898, 900, 598], base, 908)).toEqual([-149, (560 - 598) / 2, 908 + 650]);
+    // The pendant one too, over the middle; the box and the vertical one against the wall, as a chimney hood.
+    expect(applianceSpot(applianceDef("hood-pendant")!, [420, 900, 420], base, 908)).toEqual([90, (560 - 420) / 2, 908 + 650]);
+    expect(applianceSpot(applianceDef("hood-vertical")!, [598, 900, 380], base, 908)[1]).toBe(560 - 380);
     const r = withAppliance({ ...createReferencePlate(), features: [base] }, "wine-builtin", [595, 818, 570], "black", base);
     if (typeof r === "string") throw new Error(r);
     expect((r.doc.features[0] as CabinetFeature).shelves).toBe(0);
@@ -194,6 +197,9 @@ describe("électroménager : apparences et projets enregistrés", () => {
     expect(first("hood-chimney").slice(0, 5)).toEqual(["Hotte", "Filtres", "Corps", "Cheminée", "Boutons"]);
     expect(first("hood-glass", "black").slice(0, 5)).toEqual(["Façade en verre", "Filtres", "Corps", "Cheminée", "Boutons"]);
     expect(first("hood-builtin").slice(0, 3)).toEqual(["Groupe", "Visière", "Filtres"]);
+    expect(first("hood-box")).toEqual(["Hotte", "Filtres", "Corps", "Cheminée", "Boutons", "Cheminée haute", "Éclairage"]);
+    expect(first("hood-vertical", "black")).toEqual(["Façade en verre", "Filtres", "Corps", "Cheminée", "Boutons", "Cheminée haute", "Éclairage"]);
+    expect(first("hood-pendant")).toEqual(["Hotte", "Filtres", "Câbles", "Éclairage"]);
     expect(first("fridge-builtin", "white").slice(0, 2)).toEqual(["Caisse", "Joint"]);
     expect(first("fridge-combi").slice(0, 5)).toEqual(["Caisse", "Porte congélateur", "Porte réfrigérateur", "Poignées", "Socle"]);
     expect(first("fridge-american").slice(0, 6)).toEqual(["Caisse", "Porte congélateur", "Porte réfrigérateur", "Distributeur d'eau", "Poignées", "Socle"]);

@@ -65,7 +65,7 @@ export function applianceSpot(def: ApplianceDef, size: [number, number, number],
       return [x, D - 60 - d + w / 2, top];
     case "hood":
       // An island hood over the middle of its cabinet, a wall one against the wall.
-      return [x, def.id === "hood-island" ? (D - d) / 2 : D - d, top + HOOD_OVER];
+      return [x, def.id === "hood-island" || def.id === "hood-pendant" ? (D - d) / 2 : D - d, top + HOOD_OVER];
     case "under":
       return [x, 0, -h];
     case "stand":

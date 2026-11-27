@@ -100,6 +100,12 @@ export function applianceDrawing(def: ApplianceDef, finish: string): string {
           ? `<rect x="40" y="0" width="20" height="44" fill="${F}" ${edge}/><rect x="32" y="44" width="36" height="10" fill="${F}" ${edge}/><rect x="4" y="54" width="92" height="10" rx="1" fill="${F}" ${edge}/>${[0, 1, 2, 3].map((i) => `<circle cx="${84 - i * 6}" cy="59" r="1.3" fill="#3d4044"/>`).join("")}`
           : def.id === "hood-builtin"
           ?`<rect x="6" y="20" width="88" height="22" rx="1" fill="#2d3034" ${edge}/><rect x="6" y="38" width="88" height="8" rx="1" fill="${F}" ${edge}/>${[0, 1, 2].map((i) => `<circle cx="${78 - i * 7}" cy="42" r="1.5" fill="#cfd3d6"/>`).join("")}`
+          : def.id === "hood-box"
+          ? `<rect x="38" y="2" width="24" height="34" fill="${F}" ${edge}/><rect x="6" y="36" width="88" height="28" rx="1" fill="${F}" ${edge}/>${[0, 1, 2, 3].map((i) => `<rect x="${41 + i * 5}" y="49" width="3" height="2" fill="#cfd3d6"/>`).join("")}`
+          : def.id === "hood-vertical"
+          ? `<rect x="38" y="2" width="24" height="22" fill="${finish === "white" ? F : "#2b2d31"}" ${edge}/><rect x="6" y="24" width="88" height="42" rx="1" fill="${finish === "white" ? "#f3f3f4" : G}" ${edge}/>${glare(10, 26, 80, 36)}<rect x="10" y="66" width="80" height="2" fill="#f5f2dc"/>`
+          : def.id === "hood-pendant"
+          ? `${[38, 50, 62].map((x) => `<line x1="${x}" y1="0" x2="${x}" y2="30" stroke="#9aa0a6" stroke-width=".8"/>`).join("")}<rect x="22" y="30" width="56" height="34" rx="3" fill="${F}" ${edge}/><ellipse cx="50" cy="64" rx="28" ry="3" fill="#f5f2dc"/>`
           : def.id === "hood-glass"
             ? `<rect x="40" y="2" width="20" height="40" fill="${finish === "white" ? F : "#2b2d31"}" ${edge}/><path d="M6 46L22 40H78L94 46V60H6Z" fill="${finish === "white" ? "#f3f3f4" : G}" ${edge}/>${glare(10, 42, 80, 16)}<rect x="6" y="60" width="88" height="4" fill="#202226"/>`
             : `<rect x="38" y="2" width="24" height="44" fill="${F}" ${edge}/><path d="M28 46H72L94 62H6Z" fill="${F}" ${edge}/><rect x="6" y="62" width="88" height="6" fill="${F}" ${edge}/>${[0, 1, 2, 3].map((i) => `<circle cx="${84 - i * 6}" cy="65" r="1.3" fill="#3d4044"/>`).join("")}`;

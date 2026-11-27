@@ -3138,7 +3138,9 @@ opération existante.
 - **Électroménager** (groupe « Cuisine », après « Meubles de cuisine ») : la **bibliothèque d'appareils de cuisine**,
   par familles — **Fours et encastrables** (pyrolyse 60 cm, 90 cm, compact 45 cm, vapeur, machine à café 45 cm,
   tiroir chauffe-plat 14 cm, piano de cuisson posable 90 cm), **Plaques** (induction 60, 80 ou 90 cm, induction
-  aspirante 80 cm à hotte intégrée, gaz 60, 75 ou 90 cm, domino induction ou teppanyaki), **Hottes** (murale cheminée, inclinée en verre, îlot, groupe filtrant intégré),
+  aspirante 80 cm à hotte intégrée, gaz 60, 75 ou 90 cm, domino induction ou teppanyaki), **Hottes** (murale cheminée, inclinée en verre, îlot, groupe filtrant intégré, et des modernes : **box** — un bloc net,
+  sa cheminée —, **verticale verre** — un verre droit contre le mur, aspiration tout autour du bas — et **îlot suspendue** — un
+  cylindre pendu au plafond par trois câbles, sans cheminée, posé au milieu du caisson comme la hotte îlot),
   **Réfrigérateurs** (combiné intégrable, sous plan intégrable, congélateur intégrable, combiné posable, américain,
   multi-portes), **Caves à vin** (sous
   plan 60 ou 30 cm, en colonne), **Lave-vaisselle et lave-linge** (lave-vaisselle tout intégrable à porte à habiller

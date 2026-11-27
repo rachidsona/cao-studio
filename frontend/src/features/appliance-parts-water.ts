@@ -1,7 +1,8 @@
 /**
  * Les pièces des hottes, des éviers et des robinets : hotte murale (casquette, corps au devant incliné, cheminée
  * télescopique en deux parties, filtres en cassettes, éclairage, boutons), hotte inclinée en verre, hotte îlot (la
- * cheminée au milieu), groupe filtrant intégré (visière, commandes) ; évier inox ou granit (plage, bacs, bonde,
+ * cheminée au milieu), groupe filtrant intégré (visière, commandes), hotte box (un bloc net, sa cheminée), hotte verticale
+ * (un verre droit, aspiration tout autour du bas), hotte suspendue (un cylindre pendu par des câbles) ; évier inox ou granit (plage, bacs, bonde,
  * trop-plein, égouttoir) ; mitigeur (embase, corps et col de cygne, manette, mousseur, ressort). Repère de
  * features/appliance-parts.ts. Pur.
  */
@@ -18,6 +19,43 @@ function filters(W: number, y0: number, y1: number): ApplianceShape[] {
 /** Two lights under its canopy, in its front band (y about `y`). */
 const lights = (W: number, y: number): ApplianceShape[] => [W * 0.25, W * 0.75].map((x) => cyl([x, y, 0.2], [x, y, 1], 10));
 
+/**
+ * A box hood (a block, square, its touch keys on its front) or a vertical one (upright glass against the wall, drawing
+ * in all round its bottom), each with its chimney in two telescopic parts up to its top.
+ */
+function modern(vertical: boolean, W: number, H: number, D: number, L: Looks, metal: string): AppliancePart[] {
+  const head = Math.min(vertical ? 560 : 300, H * (vertical ? 0.6 : 0.4));
+  const gap = vertical ? 40 : 0;
+  const base = Math.min(head + 20, H - 20);
+  const mid = base + (H - base) / 2;
+  const [c0, c1] = [D - 260, D];
+  return [
+    vertical
+      ? { name: "Façade en verre", look: L.face, shapes: [box([0, 0, gap], [W, 8, head])] }
+      : { name: "Hotte", look: L.face, shapes: [box([0, 0, 1], [W, D, head])] },
+    { name: "Filtres", look: "aluminium-brushed", shapes: vertical ? [box([20, 12, gap - 1], [W - 20, D - 20, gap])] : filters(W, 40, D - 30) },
+    // The vertical one's body behind its glass, open all round its bottom (perimeter suction).
+    { name: "Corps", look: metal, shapes: vertical ? [box([10, 8, gap], [W - 10, D, head])] : [box([W / 2 - 150, D - 300, head], [W / 2 + 150, D, base])] },
+    { name: "Cheminée", look: metal, shapes: [box([W / 2 - 130, c0, base], [W / 2 + 130, c1, mid])] },
+    { name: "Boutons", look: "display-white", shapes: [0, 1, 2, 3].map((k) => (vertical ? box([W / 2 - 60 + k * 32, -1, head - 50], [W / 2 - 44 + k * 32, 0, head - 42]) : box([W / 2 - 60 + k * 32, -1, head / 2 - 4], [W / 2 - 44 + k * 32, 0, head / 2 + 4]))) },
+    { name: "Cheminée haute", look: metal, shapes: [box([W / 2 - 124, c0 + 6, mid], [W / 2 + 124, c1, H])] },
+    // A LED band all along the bottom of its glass, or two lights under the box.
+    { name: "Éclairage", look: "led-neutral", shapes: vertical ? [box([20, 1, gap], [W - 20, 7, gap + 3])] : lights(W, 20) },
+  ];
+}
+
+/** A pendant hood: a cylinder hung from the ceiling by three cables, its filter and its ring of lights underneath. */
+function pendant(W: number, H: number, D: number, L: Looks): AppliancePart[] {
+  const [x, y, r] = [W / 2, D / 2, Math.min(W, D) / 2 - 1];
+  const body = Math.min(420, H * 0.6);
+  return [
+    { name: "Hotte", look: L.face, shapes: [cyl([x, y, 1], [x, y, body], r)] },
+    { name: "Filtres", look: "aluminium-brushed", shapes: [cyl([x, y, 0], [x, y, 1], r * 0.65)] },
+    { name: "Câbles", look: "chrome", shapes: [0, 1, 2].map((k) => { const t = (k * 2 * Math.PI) / 3; const [cx, cy] = [x + r * 0.6 * Math.cos(t), y + r * 0.6 * Math.sin(t)]; return cyl([cx, cy, body], [cx, cy, H], 1.5); }) },
+    { name: "Éclairage", look: "led-neutral", shapes: Array.from({ length: 6 }, (_, k) => { const t = (k * Math.PI) / 3; const [cx, cy] = [x + r * 0.82 * Math.cos(t), y + r * 0.82 * Math.sin(t)]; return cyl([cx, cy, 0.2], [cx, cy, 1], 8); }) },
+  ];
+}
+
 /** A hood. The first pieces of each model keep their order (saved documents). */
 export function hood(model: string, W: number, H: number, D: number, L: Looks): AppliancePart[] {
   const metal = L.face === "glass-lacquered-black" ? "steel-black" : L.face === "glass-lacquered-white" ? "plastic-white" : L.face;
@@ -30,6 +68,7 @@ export function hood(model: string, W: number, H: number, D: number, L: Looks): 
       { name: "Éclairage", look: "led-neutral", shapes: lights(W, 11).map((s) => (s.kind === "cyl" ? { ...s, r: 8 } : s)) },
     ];
   }
+  if (model === "hood-pendant") return pendant(W, H, D, L);
   const island = model === "hood-island";
   const glass = model === "hood-glass";
   // Its head (a canopy, or the glass hood's slanted body), its body over it, then its chimney up to its top in two
@@ -40,6 +79,7 @@ export function hood(model: string, W: number, H: number, D: number, L: Looks): 
   const [c0, c1] = island ? [D / 2 - 130, D / 2 + 130] : [D - 260, D];
   const lower = box([W / 2 - 130, c0, base], [W / 2 + 130, c1, mid]);
   const upper = box([W / 2 - 124, c0 + 6, mid], [W / 2 + 124, c1 - (island ? 6 : 0), H]);
+  if (model === "hood-box" || model === "hood-vertical") return modern(model === "hood-vertical", W, H, D, L, metal);
   if (glass) {
     // The slanted glass from its bottom front to the top of its head, the body just behind it.
     const [a, b]: [[number, number], [number, number]] = [[0, 8], [D - 180, head]];

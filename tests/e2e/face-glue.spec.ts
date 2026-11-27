@@ -321,6 +321,8 @@ test("électroménager : un four choisi dans la bibliothèque se pose dans le ca
   await expect(page.getByText(/Façades du caisson ôtées/).first()).toBeVisible();
   // Still open: a hood over it.
   await tool.locator('[data-appliance-family="hood"]').click();
+  // The modern ones too: a box, a vertical glass, a pendant over an island.
+  for (const id of ["hood-box", "hood-vertical", "hood-pendant"]) await expect(tool.locator(`[data-appliance="${id}"]`)).toBeVisible();
   await tool.locator('[data-appliance="hood-chimney"]').click();
   await page.waitForTimeout(1200);
   await page.mouse.click(canvas.x + canvas.width * 0.5, canvas.y + canvas.height * 0.62);
