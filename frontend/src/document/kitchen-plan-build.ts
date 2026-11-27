@@ -195,7 +195,8 @@ export function kitchenFromPlan(p: KitchenFloorPlan, room?: KitchenRoomInfo): Ki
     // Taken away on the run's strip: no worktop (the splashback stays on the wall).
     if (!p.noWorktop?.[run.id]) worktops(p, run, covered, holes, band, box, rounds);
     if (p.endPanels) endPanels(p, run, fill, band, box);
-    kitchenCap(p, run, fill, g.wall !== null, ceiling, band, box, out.notes, cabinet);
+    // The caissons furnished by hand carry it as the units they were.
+    kitchenCap(p, run, { ...fill, placed: [...fill.placed, ...heldUnits(fill)] }, g.wall !== null, ceiling, band, box, out.notes, cabinet);
     const full = ceiling >= s.wallTop && !g.low ? s.wallBottom : p.worktopHeight + 600;
     // Under a hood the splashback goes up to it, in one piece; or, as chosen, only there.
     const hoods = fill.placed.filter((x) => x.row === "wall" && applianceOf(x.item)?.role === "hood").map((x): [number, number] => [x.at, x.at + x.item.width]);

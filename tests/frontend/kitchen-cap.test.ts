@@ -140,4 +140,11 @@ describe("casquette en caissons à porte relevante (sur-meubles)", () => {
     expect(low.units.filter((u) => u.name.startsWith("Casquette"))).toEqual([]);
     expect(low.notes.join(" ")).toMatch(/pas de caisson là/);
   });
+
+  it("sur un caisson haut aménagé à la main comme sur le meuble qu'il était", () => {
+    const p = plan([WALL], { cap: "units" });
+    const held = { ...p, runs: { A: [{ ...p.runs!.A![0]!, model: "space-wall", from: "wall-haut-1-porte", furnished: "sk9", depth: 380, height: 700 }] } };
+    expect(units(held).map((u) => u.width)).toEqual([600]);
+    expect(caps({ ...held, cap: "flat" }).length).toBe(1);
+  });
 });
