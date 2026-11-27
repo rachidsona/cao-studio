@@ -109,12 +109,13 @@ export const TYPE_SPRITES: Record<NavType, string> = {
 };
 
 /** Names of the boolean operations, the same everywhere in the interface (Fusion's words). */
-export const OPERATION_LABELS: Record<BooleanOperation | "exclude", string> = {
+export const OPERATION_LABELS: Record<BooleanOperation | "exclude" | "limit", string> = {
   new: "Nouveau corps",
   join: "Joindre",
   cut: "Couper",
   intersect: "Intersection",
   exclude: "Sans le commun",
+  limit: "Limiter",
 };
 
 /** Choices of an operation menu, in this order. */

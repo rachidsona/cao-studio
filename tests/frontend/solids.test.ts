@@ -160,6 +160,14 @@ describe("combinaison de corps et extrusion en intersection", () => {
     expect(() => parseDocument(JSON.parse(JSON.stringify(d)))).not.toThrow();
   });
 
+  it("limiter : la cible s'arrête à l'outil qui la traverse (ce qui dépasse ôté), l'outil reste entier et gardé", () => {
+    // Shelf A: x −10..10; side B: x 5..7, right across it: A keeps x −10..5, its 3 beyond B taken away.
+    const d = doc(...box("A", 0, 20), ...box("B", 6, 2), { id: "cb", type: "combine", name: "Combinaison", target: "eA", tools: ["eB"], operation: "limit" });
+    expect(volume(d, "cb").volume).toBeCloseTo(15 * 20 * 10, 6);
+    expect(consumedBodies(d.features.at(-1)!)).toEqual(["eA"]);
+    expect(() => parseDocument(JSON.parse(JSON.stringify(d)))).not.toThrow();
+  });
+
   it("refuse l'union de corps disjoints", () => {
     const d = doc(...box("A", 0, 10), ...box("B", 50, 10), { id: "cb", type: "combine", name: "Combinaison", target: "eA", tools: ["eB"], operation: "join" });
     expect(volume(d, "cb").message).toMatch(/ne se touchent pas/);

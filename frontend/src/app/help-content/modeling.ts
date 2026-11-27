@@ -274,7 +274,7 @@ export const MODELING: HelpFamily[] = [
         steps: [
           "Cliquez « Combiner » (ou sélectionnez d'abord les corps : le premier sera la cible, les autres les outils).",
           "Cliquez le « Corps cible » dans la vue (son champ cerné de bleu) : ensuite, chaque corps cliqué s'ajoute aux « Corps outils », et un autre clic l'en retire (ou ✕ dans la liste). Cliquez un champ pour choisir ce qu'il contient, ✕ à côté le vide.",
-          "Choisissez l'opération : « Joindre », « Couper », « Intersection » ou « Sans le commun » (chaque corps perd la partie qu'il a en commun avec les autres, tous restent : deux planches qui se croisent, chacune entaillée). « Choisir dans la liste » déplie tous les corps, à cocher.",
+          "Choisissez l'opération : « Joindre », « Couper », « Intersection », « Sans le commun » (chaque corps perd la partie qu'il a en commun avec les autres, tous restent : deux planches qui se croisent, chacune entaillée) ou « Limiter » (le corps cible s'arrête aux corps outils, ce qui dépasse est ôté, les outils restent entiers : une étagère arrêtée au côté qu'elle traverse, le côté complet). « Choisir dans la liste » déplie tous les corps, à cocher.",
           "Cochez « Conserver les corps outils » si vous en avez encore besoin.",
           "L'aperçu montre le résultat ; OK (ou Entrée) le garde, en une annulation. Annuler (ou Échap, ou la croix) ne change rien.",
         ],

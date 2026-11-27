@@ -254,9 +254,10 @@ export class CombineTool extends PanelTool {
           }),
         ),
     );
-    // The operations side by side; « Sans le commun »: the part in common taken away from each body, all kept.
-    const ops: [CombineFeature["operation"], string, string][] = [["join", "∪", "Joindre"], ["cut", "−", "Couper"], ["intersect", "∩", "Intersection"], ["exclude", "⊖", "Sans le commun"]];
-    const operation = el("div", { class: "grid grid-cols-4 gap-1", role: "group", "aria-label": "Opération" }, ...ops.map(([op, sign, label]) => {
+    // The operations side by side; « Sans le commun »: the part in common taken away from each body, all kept;
+    // « Limiter »: the target stops at the tools, which stay whole.
+    const ops: [CombineFeature["operation"], string, string][] = [["join", "∪", "Joindre"], ["cut", "−", "Couper"], ["intersect", "∩", "Intersection"], ["exclude", "⊖", "Sans le commun"], ["limit", "⊣", "Limiter"]];
+    const operation = el("div", { class: "grid grid-cols-3 gap-1", role: "group", "aria-label": "Opération" }, ...ops.map(([op, sign, label]) => {
       const on = this.operation === op;
       const b = el("button", { type: "button", "aria-pressed": String(on), "data-combine-op": op, class: `flex h-12 flex-col items-center justify-center border text-2xs font-medium ${on ? "border-sky-600 bg-sky-50 text-sky-800 dark:border-sky-400 dark:bg-sky-950 dark:text-sky-200" : "border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"}` }, el("span", { class: "text-lg leading-none" }, sign), label);
       b.addEventListener("click", () => ((this.operation = op), changed()));
@@ -276,7 +277,9 @@ export class CombineTool extends PanelTool {
       operation,
       this.operation === "exclude"
         ? this.info("Chaque corps perd la partie qu'il a en commun avec les autres ; tous restent.")
-        : this.checkRow("Conserver les corps outils", this.keepTools, (on) => {
+        : this.operation === "limit"
+          ? this.info("Le corps cible s'arrête aux corps outils (une étagère au côté qu'elle traverse) : ce qui dépasse est ôté ; les outils restent entiers.")
+          : this.checkRow("Conserver les corps outils", this.keepTools, (on) => {
             this.keepTools = on;
             changed();
           }),

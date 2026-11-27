@@ -34,7 +34,7 @@ const cutSizesOk = (c: Record<string, unknown>): boolean => {
 };
 
 const MACHINING_KINDS = new Set(["drilling32", "hinge", "groove", "dowel", "confirmat", "minifix", "halflap", "tenon", "cutout", "custom"]);
-const COMBINE_OPERATIONS = new Set(["join", "cut", "intersect", "exclude"]);
+const COMBINE_OPERATIONS = new Set(["join", "cut", "intersect", "exclude", "limit"]);
 
 type Json = Record<string, unknown>;
 

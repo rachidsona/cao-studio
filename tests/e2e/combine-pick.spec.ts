@@ -59,6 +59,10 @@ test("combiner des corps : la cible puis les corps outils se cliquent dans la vu
   await expect(tool.locator('[data-combine-op="exclude"]')).toHaveAttribute("aria-pressed", "true");
   await expect(tool).toContainText("Chaque corps perd la partie qu'il a en commun avec les autres");
   await expect(tool.getByText("Conserver les corps outils")).toHaveCount(0);
+  // « Limiter »: the target stops at the tools, which stay whole.
+  await tool.locator('[data-combine-op="limit"]').click();
+  await expect(tool).toContainText("Le corps cible s'arrête aux corps outils");
+  await expect(tool.getByText("Conserver les corps outils")).toHaveCount(0);
   await tool.locator('[data-combine-op="join"]').click();
 
   // Taken away with its ✕, then the list of every body stays folded.

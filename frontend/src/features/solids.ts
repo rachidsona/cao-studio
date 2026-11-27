@@ -3,7 +3,7 @@
  * chamfer and combination of bodies. Edges are found again through
  * persistent references (geometry/references.ts).
  */
-import { basicFaceExtrusion, drawRectangle, measureArea, Plane, Vector, type ChamferRadius, type Edge, type Face, type Shape3D } from "replicad";
+import { basicFaceExtrusion, drawRectangle, measureArea, measureVolume, Plane, Vector, type ChamferRadius, type Edge, type Face, type Shape3D } from "replicad";
 import { AXIS_X, AXIS_Y } from "../document/sketch";
 import type { ChamferFeature, CombineFeature, ExtrudeFeature, FilletFeature, RevolveFeature } from "../document/types";
 import { GeometryError, isShapeValid, requireSingleValidSolid } from "../geometry/kernel";
@@ -105,6 +105,7 @@ export function buildCombine(feature: CombineFeature, lookup: OutputLookup): Sol
   if (feature.tools.length === 0) throw new GeometryError(`${feature.name} : choisissez au moins un corps outil.`);
   if (feature.tools.includes(feature.target)) throw new GeometryError(`${feature.name} : le corps cible ne peut pas être aussi un outil.`);
   if (feature.operation === "exclude") return buildExclude(feature, lookup);
+  if (feature.operation === "limit") return buildLimit(feature, lookup);
   let current = requireSolid(lookup, feature.target).shape;
   let owned = false;
   try {
@@ -156,6 +157,32 @@ function buildExclude(feature: CombineFeature, lookup: OutputLookup): SolidOutpu
     return parts.length === 1 ? { kind: "solid", shape: parts[0]! } : { kind: "solids", shapes: parts };
   } finally {
     for (const shape of made) shape.delete();
+  }
+}
+
+/**
+ * « Limiter »: the target stops at the tools (a shelf at a side it crosses) — cut by them, only its largest piece kept;
+ * the tools stay whole. shortcut: the largest piece is kept, not the one on a side chosen; when a body crossed in its
+ * middle must keep both halves, use « Couper ».
+ */
+function buildLimit(feature: CombineFeature, lookup: OutputLookup): SolidOutput {
+  let rest = requireSolid(lookup, feature.target).shape.clone() as Shape3D;
+  try {
+    for (const id of feature.tools) {
+      const next = rest.cut(requireSolid(lookup, id).shape);
+      rest.delete();
+      rest = next;
+    }
+    const pieces = rest.solids;
+    if (!pieces.length) throw new GeometryError(`${feature.name} : résultat vide.`);
+    const kept = pieces.map((s) => ({ s, v: measureVolume(s) })).reduce((a, b) => (b.v > a.v ? b : a)).s.clone() as Shape3D;
+    if (!isShapeValid(kept)) {
+      kept.delete();
+      throw new GeometryError(`${feature.name} : le solide obtenu est invalide.`);
+    }
+    return { kind: "solid", shape: kept };
+  } finally {
+    rest.delete();
   }
 }
 
