@@ -2808,7 +2808,10 @@ opération existante.
     sans les caissons : `itemSize` et `withCaissonsFollowing`), un caisson de sa largeur,
     de la « Profondeur des caissons » (58 cm d'habitude, comme les colonnes, de 30 à 80, contre le mur : il avance devant un haut de 35 ; celui d'un
     angle garde la profondeur des hauts, pour ne pas entrer dans l'autre mur), de la « Hauteur des caissons » choisie (35 cm d'habitude, de 25 à 60), sa porte se levant ; sous un
-    plafond trop bas, pas de caisson là et un mot (`capUnits`). Pour poser un caisson à la main : « Casquette
+    plafond trop bas, pas de caisson là et un mot (`capUnits`). Un « Panneau entre hauts et caissons » (0 : aucun ; 1,8 cm
+    pour un panneau de finition, jusqu'à 5) se pose sous chaque caisson, de sa largeur, du mur au nu de sa porte, pris sur
+    sa hauteur : le haut des caissons et des colonnes ne bouge pas ; sur la bande, ce panneau choisit la casquette, son
+    épaisseur se change sous la bande (« Panneau dessous »). Pour poser un caisson à la main : « Casquette
     relevante » (sur un meuble haut) et « Casquette sur colonne » (58 cm de profondeur toutes deux, comme les colonnes) dans les meubles hauts du
     catalogue se posent **sur** le meuble choisi, à sa hauteur, le suivant à côté (`above` de `document/kitchen-catalog.ts`),
     même quand le projet a un Plan de cuisine ; choisies dans un linéaire du plan, elles mettent la casquette du plan en

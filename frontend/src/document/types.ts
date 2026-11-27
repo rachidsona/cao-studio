@@ -257,6 +257,8 @@ export interface KitchenFloorPlan {
   capHeight?: number;
   /** Caissons with lift-up doors (« units »): their depth off the wall (mm), 58 cm when missing (as the columns). A plain or caisson casquette: its depth off the wall, the same everywhere (missing or 0: each unit's under it, plus the overhang). */
   capDepth?: number;
+  /** Caissons with lift-up doors (« units »): the finishing panel between the wall units and them, its thickness (mm); missing or 0: none. */
+  capGap?: number;
   capOverhang?: number;
   /** The walls it draws behind its runs (no surveyed room) left out: « Murs de la pièce » unticked (document/kitchen-walls.ts). */
   noWalls?: boolean;

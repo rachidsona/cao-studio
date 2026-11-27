@@ -192,7 +192,7 @@ function capRows(host: StripActionsHost): HTMLElement[] {
   const select = el("select", { class: "h-7 border border-gray-300 bg-transparent px-1 dark:border-gray-600", "aria-label": "Sorte de casquette", "data-strip-cap-kind": "" },
     ...([["flat", "Plate"], ["box", "En caisson"], ["units", "Caissons à porte relevante"]] as const).map(([v, text]) => el("option", { value: v, selected: kind === v }, text)));
   select.addEventListener("change", () => host.setCap({ cap: select.value as KitchenFloorPlan["cap"] }));
-  const size = (label: string, key: "capHeight" | "capDepth", value: number) => {
+  const size = (label: string, key: "capHeight" | "capDepth" | "capGap", value: number) => {
     const input = el("input", { type: "text", inputmode: "decimal", class: FIELD, value: trim(toDisplay(value, unit), 4), "aria-label": `${label} (${UNIT_LABELS[unit]})`, [`data-strip-${key}`]: "" });
     input.addEventListener("keydown", (event) => {
       event.stopPropagation();
@@ -205,5 +205,6 @@ function capRows(host: StripActionsHost): HTMLElement[] {
   const depth = host.cap.depth ?? (kind === "units" ? CAP.unitDepth : 0);
   const remove = el("button", { type: "button", class: SMALL, "data-strip-remove": "", title: "Plus de casquette sur toute la cuisine (Suppr) ; elle se remet dans les réglages du plan" }, "Supprimer la casquette");
   remove.addEventListener("click", () => host.setCap({ cap: undefined }));
-  return [select, ...(kind === "flat" ? [] : [size("Hauteur", "capHeight", height)]), size(kind === "units" ? "Profondeur" : "Profondeur (0 : celle des meubles)", "capDepth", depth), remove];
+  // Caissons: the finishing panel between the wall units and them, its thickness (0: none).
+  return [select, ...(kind === "flat" ? [] : [size("Hauteur", "capHeight", height)]), size(kind === "units" ? "Profondeur" : "Profondeur (0 : celle des meubles)", "capDepth", depth), ...(kind === "units" ? [size("Panneau dessous (0 : aucun)", "capGap", host.cap.gap ?? 0)] : []), remove];
 }

@@ -26,7 +26,7 @@ test("plan de cuisine : une casquette en caisson sur les meubles hauts", async (
   expect(errors).toEqual([]);
 });
 
-test("plan de cuisine : la casquette en caissons à porte relevante, un caisson sur chaque meuble haut", async ({ page }) => {
+test("plan de cuisine : la casquette en caissons à porte relevante, un caisson sur chaque meuble haut, sur un panneau de finition", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "zz-test-casquette-caissons");
@@ -39,11 +39,16 @@ test("plan de cuisine : la casquette en caissons à porte relevante, un caisson 
   // Their height only: each as wide and deep as the unit under it.
   await expect(tool.getByLabel(/^Hauteur des caissons/)).toHaveValue(/^35/);
   await expect(tool.getByLabel(/^Débord de la casquette/)).toHaveCount(0);
+  // A finishing panel of 1.8 cm between the wall units and their caissons.
+  const panel = tool.getByLabel(/^Panneau entre hauts et caissons/);
+  await panel.fill((await panel.getAttribute("aria-label"))?.includes("(mm)") ? "18" : "1,8");
+  await panel.blur();
   await tool.getByRole("button", { name: "Créer le plan" }).click();
   await tool.locator("[data-propose]").click();
   await expect(page.getByText(/Cuisine proposée/).first()).toBeVisible();
   await expect(page.locator('[title^="Casquette"]').first()).toBeAttached({ timeout: 60_000 });
   await expect(page.locator('[title^="Bandeau de casquette"]')).toHaveCount(0);
+  await expect(page.locator('[title^="Panneau sous Casquette"]').first()).toBeAttached();
   expect(errors).toEqual([]);
 });
 

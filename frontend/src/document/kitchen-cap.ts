@@ -7,7 +7,8 @@
  * est coupé au droit d'un côté de meuble. Contre le linéaire qui passe dans un angle, elle s'arrête au bord de sa
  * casquette. Elle prévient : une porte relevante dessous ne se lève plus, un plafond trop bas. Ou en caissons à porte
  * relevante (« sur-meubles ») : sur chaque meuble haut, un caisson de sa largeur et de sa profondeur, de la hauteur
- * choisie, sa porte se levant ; les colonnes et l'habillage de réfrigérateur n'en ont pas, ils montent eux-mêmes jusqu'en
+ * choisie, sa porte se levant — posé sur un panneau de finition de l'épaisseur choisie (`capGap`), s'il y en a un, pris
+ * sur sa hauteur ; les colonnes et l'habillage de réfrigérateur n'en ont pas, ils montent eux-mêmes jusqu'en
  * haut des caissons (features/kitchen-run-items.ts `itemSize`). Pur.
  */
 import { wallCornerSide } from "./kitchen-corners";
@@ -25,7 +26,7 @@ type Under = { from: number; to: number; depth: number; top: number };
 /** The casquette of a run, its pieces put by `box`, what it warns of in `notes` (`wallRow`: the run has a wall row). */
 export function kitchenCap(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: boolean, ceiling: number, band: Band, box: BoxOf, notes: string[], cabinet?: CabinetOf): void {
   if (!p.cap || capProblem(p)) return;
-  if (p.cap === "units") return capUnits(p, run, fill, wallRow, ceiling, notes, cabinet);
+  if (p.cap === "units") return capUnits(p, run, fill, wallRow, ceiling, notes, band, box, cabinet);
   const s = kitchenSizes(p);
   const overhang = p.capOverhang ?? CAP.overhang;
   const thick = p.cap === "box" ? (p.capHeight ?? CAP.height) : (p.capThickness ?? CAP.thickness);
@@ -111,12 +112,19 @@ export function kitchenCap(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, 
 
 /**
  * The casquette in caissons: over each wall unit and each arm of a wall corner unit (not the hood, a filler; not a
- * column: it rises to their top itself), a caisson of its width, 58 cm deep unless set (`capDepth`), its lift-up door.
+ * column: it rises to their top itself), a caisson of its width, 58 cm deep unless set (`capDepth`), its lift-up door;
+ * with a gap (`capGap`), set on a finishing panel that thick, as wide as it, out to the face of its door — taken from its
+ * height: its top stays where it was (under a ceiling it just fits under, the columns as high as before).
  */
-function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: boolean, ceiling: number, notes: string[], cabinet?: CabinetOf): void {
+function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: boolean, ceiling: number, notes: string[], band: Band, box: BoxOf, cabinet?: CabinetOf): void {
   if (!cabinet) return;
-  const h = p.capHeight ?? CAP.unit;
+  const [h, gap] = [p.capHeight ?? CAP.unit, p.capGap ?? 0];
   const deep = p.capDepth ?? CAP.unitDepth;
+  /** The caisson over `u`…`u + w` from `z`, `d` deep: on its finishing panel when there is a gap. */
+  const put = (name: string, u: number, w: number, d: number, z: number) => {
+    if (gap > 0) box(`Panneau sous ${name}`, "panel", band(u, u + w, 0, d + FRONT, z, z + gap));
+    cabinet(name, u, w, d, z + gap, h - gap, { plinth: 0, shelves: 0, layout: "door", side: "top" });
+  };
   let n = 0;
   // Up in the corners: over the wall corner unit's arm along this run (the run that passes carries the corner itself).
   // shortcut: the corner's caisson keeps the wall units' depth (deeper, it would run into the other run's); one lift-up door across the whole arm, the part behind the other run's caisson included; a door over
@@ -129,7 +137,7 @@ function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: 
       notes.push(`Casquette ${run.id} : ${Math.round(ceiling - top)} mm entre le meuble haut d'angle et le plafond, moins que les ${h} mm d'un caisson — pas de caisson là.`);
       continue;
     }
-    cabinet(`Casquette d'angle ${Math.round(arm[1] - arm[0])} (${run.id}${side === "right" ? " droite" : ""})`, arm[0], arm[1] - arm[0], p.wallDepth, top, h, { plinth: 0, shelves: 0, layout: "door", side: "top" });
+    put(`Casquette d'angle ${Math.round(arm[1] - arm[0])} (${run.id}${side === "right" ? " droite" : ""})`, arm[0], arm[1] - arm[0], p.wallDepth, top);
   }
   for (const pl of fill.placed) {
     if (pl.row !== "wall" || applianceOf(pl.item)?.role === "hood" || isFiller(pl.item) || pl.entry.round) continue;
@@ -139,7 +147,7 @@ function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: 
       notes.push(`Casquette ${run.id} : ${Math.round(ceiling - z)} mm entre ${pl.entry.name} ${pl.item.width} et le plafond, moins que les ${h} mm d'un caisson — pas de caisson là.`);
       continue;
     }
-    cabinet(`Casquette ${pl.item.width} (${run.id}${++n})`, pl.at, pl.item.width, deep, z, h, { plinth: 0, shelves: 0, layout: "door", side: "top" });
+    put(`Casquette ${pl.item.width} (${run.id}${++n})`, pl.at, pl.item.width, deep, z);
   }
 }
 

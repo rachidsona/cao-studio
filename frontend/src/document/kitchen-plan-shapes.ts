@@ -288,7 +288,7 @@ export const CAP = { thickness: 38, height: 80, overhang: 30, board: 19, panel: 
 export function capProblem(p: KitchenFloorPlan): string | null {
   if (!p.cap) return null;
   const [t, h, o] = [p.capThickness ?? CAP.thickness, p.capHeight ?? (p.cap === "units" ? CAP.unit : CAP.height), p.capOverhang ?? CAP.overhang];
-  if (p.cap === "units") return !(h >= 250 && h <= 600) ? "Les caissons de casquette ont de 25 à 60 cm de hauteur." : !((p.capDepth ?? CAP.unitDepth) >= 300 && (p.capDepth ?? CAP.unitDepth) <= 800) ? "Les caissons de casquette ont de 30 à 80 cm de profondeur." : null;
+  if (p.cap === "units") return !(h >= 250 && h <= 600) ? "Les caissons de casquette ont de 25 à 60 cm de hauteur." : !((p.capGap ?? 0) >= 0 && (p.capGap ?? 0) <= 50) ? "Le panneau entre les hauts et les caissons a de 0 à 5 cm d'épaisseur." : !((p.capDepth ?? CAP.unitDepth) >= 300 && (p.capDepth ?? CAP.unitDepth) <= 800) ? "Les caissons de casquette ont de 30 à 80 cm de profondeur." : null;
   if (p.cap === "flat" && !(t >= 16 && t <= 60)) return "La casquette a de 16 à 60 mm d'épaisseur.";
   if (p.capDepth && !(p.capDepth >= 150 && p.capDepth <= 900)) return "La casquette a de 15 à 90 cm de profondeur (0 : celle des meubles dessous).";
   if (p.cap === "box" && !(h >= 40 && h <= 600)) return "La casquette en caisson a de 4 à 60 cm de hauteur.";

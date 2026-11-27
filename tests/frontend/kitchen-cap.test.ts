@@ -1,7 +1,7 @@
 /** La casquette des meubles hauts du Plan de cuisine (document/kitchen-cap.ts). */
 import { describe, expect, it } from "vitest";
 import { kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
-import { KITCHEN_PLAN, capProblem, kitchenPlanProblem, kitchenSizes } from "../../frontend/src/document/kitchen-plan-shapes";
+import { FRONT, KITCHEN_PLAN, capProblem, kitchenPlanProblem, kitchenSizes } from "../../frontend/src/document/kitchen-plan-shapes";
 import type { KitchenFloorPlan, KitchenRunItem } from "../../frontend/src/document/types";
 import { newItem } from "../../frontend/src/features/kitchen-run-items";
 
@@ -131,6 +131,22 @@ describe("casquette en caissons à porte relevante (sur-meubles)", () => {
       const overlap = (a: (typeof boxes)[number], b: (typeof boxes)[number]) => [0, 1, 2].every((i) => Math.min(a[1][i]!, b[1][i]!) - Math.max(a[0][i]!, b[0][i]!) > 0.5);
       expect(boxes.some((a, i) => boxes.some((b, j) => i < j && overlap(a, b)))).toBe(false);
     }
+  });
+
+  it("un panneau de finition entre les hauts et les caissons : 1,8 cm pris sur leur hauteur, leur haut et la colonne où ils étaient", () => {
+    const p = plan([["tall-colonne-rangement", 600], WALL], { cap: "units", capGap: 18 });
+    const made = kitchenFromPlan(p);
+    const caisson = made.units.find((u) => u.name.startsWith("Casquette"))!;
+    expect([caisson.origin[2], caisson.height]).toEqual([TOP + 18, 350 - 18]);
+    // Under it, as wide as it, from the wall to the face of its door, 18 mm thick.
+    const panel = made.boxes.find((b) => b.name === `Panneau sous ${caisson.name}`)!;
+    expect([panel.from[2], panel.to[2]]).toEqual([TOP, TOP + 18]);
+    expect(Math.round(panel.to[0] - panel.from[0])).toBe(600);
+    expect(Math.round(panel.to[1] - panel.from[1])).toBe(580 + FRONT);
+    expect(made.units.find((u) => u.name.startsWith("Colonne"))!.height).toBeCloseTo(TOP + 350, 6);
+    // None without a gap; a gap too thick refused.
+    expect(kitchenFromPlan({ ...p, capGap: 0 }).boxes.some((b) => b.name.startsWith("Panneau sous"))).toBe(false);
+    expect(capProblem({ ...p, capGap: 80 })).toMatch(/0 à 5 cm/);
   });
 
   it("leur hauteur choisie, de 25 à 60 cm ; sous un plafond trop bas, pas de caisson et un mot", () => {
