@@ -6,7 +6,7 @@
  */
 import { bodyLabel } from "../document/operations";
 import { extendable } from "../document/extend-element";
-import { followLink, linkBodies, withoutLinks, type FacePlane } from "../document/extend-reach";
+import { followLink, linkBodies, replacedLinks, withoutLinks, type FacePlane } from "../document/extend-reach";
 import type { CadDocument, ExtendLink, Vec3 } from "../document/types";
 import type { GeometryClient } from "../geometry/client";
 import type { FaceOutline, OutlineEdge } from "../geometry/protocol";
@@ -53,9 +53,11 @@ export class ExtendFollower {
   /** The document with every link applied once (null: nothing to do). */
   private async settle(doc: CadDocument): Promise<CadDocument | null> {
     let next = doc;
-    const gone: string[] = [];
+    // A face linked again: only its last link holds, the others go (they would pull it elsewhere).
+    const gone: string[] = replacedLinks(doc.extendLinks ?? []);
     const said: string[] = [];
     for (const link of doc.extendLinks ?? []) {
+      if (gone.includes(link.id)) continue;
       const bodies = linkBodies(next, link);
       if (!bodies) {
         gone.push(link.id);

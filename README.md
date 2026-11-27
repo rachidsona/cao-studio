@@ -970,8 +970,9 @@ opération existante.
   - **Suivre l'autre élément** (coché par défaut) : quand l'élément d'arrivée change ensuite (élargi, déplacé, une
     cote), l'élément prolongé le suit. Une pièce reçoit une opération qui va jusqu'à la face à chaque recalcul ; un
     caisson ou une Répartition garde une liaison (`extendLinks` du document), refaite après chaque modification dans la
-    même annulation (`app/extend-follow.ts`). Le panneau liste les éléments qui en suivent un autre ; ✕ retire une
-    liaison.
+    même annulation (`app/extend-follow.ts`). Une face ne suit qu'une seule autre : liée de nouveau, sa liaison
+    d'avant est remplacée (les plus anciennes, gardées par un projet d'avant, s'en vont à la liaison refaite :
+    `replacedLinks`). Le panneau liste les éléments qui en suivent un autre ; ✕ retire une liaison.
 - **Pousser** (bouton du groupe **Modifier**, après « Prolonger élément ») : les éléments sélectionnés — un caisson avec
   ses façades, une Répartition avec ses pièces, sinon le corps seul ; un clic dans la vue en choisit un, Maj + clic en
   ajoute — avancent d'un **pas** à chaque flèche du clavier. Le pas se tape au clavier, l'outil ouvert (les chiffres vont

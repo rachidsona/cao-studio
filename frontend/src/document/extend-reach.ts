@@ -113,7 +113,8 @@ export function extendTo(doc: CadDocument, fromBody: string, toBody: string, fro
   }
   if (follow && refs.from && refs.to) {
     const link: ExtendLink = { id: uniqueLinkId(doc), from: { body: bodyOrigin(doc, fromBody), face: refs.from }, to: { body: bodyOrigin(doc, toBody), face: refs.to } };
-    next = { ...next, extendLinks: [...(next.extendLinks ?? []), link] };
+    // One face follows one other: the links it had are replaced (else they would pull it to different places).
+    next = { ...next, extendLinks: [...(next.extendLinks ?? []).filter((l) => !sameFace(l.from, link.from)), link] };
   }
   return { doc: next, by: reach.by, id: owner.id, message: say(reach.by, follow) };
 }
@@ -140,6 +141,16 @@ export function extendBy(doc: CadDocument, fromBody: string, from: FacePlane, by
 }
 
 const cm = (mm: number) => `${Number((mm / 10).toFixed(1)).toLocaleString("fr-FR")} cm`;
+
+/** The older links of a face linked again since (saved before a face followed one other only): their ids. */
+export function replacedLinks(links: readonly ExtendLink[]): string[] {
+  return links.filter((l, i) => links.slice(i + 1).some((m) => sameFace(l.from, m.from))).map((l) => l.id);
+}
+
+/** The same face of the same element: its side (its normal) and where it lies on it, wherever it has gone since. */
+function sameFace(a: ExtendLink["from"], b: ExtendLink["from"]): boolean {
+  return a.body === b.body && dot(a.face.normal, b.face.normal) > 0.999 && a.face.rel.every((v, i) => Math.abs(v - b.face.rel[i]!) < 0.01);
+}
 
 function uniqueLinkId(doc: CadDocument): string {
   const used = new Set((doc.extendLinks ?? []).map((l) => l.id));

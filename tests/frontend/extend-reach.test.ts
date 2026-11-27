@@ -4,7 +4,7 @@
  * refaite quand l'autre élément change.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { extendBy, extendTo, followLink, onEnvelope, reachBy, travelTo, wayOf, withoutLinks, type FacePlane } from "../../frontend/src/document/extend-reach";
+import { extendBy, extendTo, followLink, onEnvelope, reachBy, replacedLinks, travelTo, wayOf, withoutLinks, type FacePlane } from "../../frontend/src/document/extend-reach";
 import { bodyLabel } from "../../frontend/src/document/operations";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type ExtrudeFeature, type FaceRef, type TrimFeature, type Vec3 } from "../../frontend/src/document/types";
 import { validateDocument } from "../../frontend/src/document/validate";
@@ -48,6 +48,24 @@ describe("prolonger et garder", () => {
     // Without « Suivre », nothing kept.
     const once = extendTo(withCabinet(), "c1#1", "c2#0", right, face([900, 0, 0], [-1, 0, 0]), {}, false);
     expect(typeof once !== "string" && once.doc.extendLinks).toBeFalsy();
+  });
+
+  it("une face suit une seule autre : liée de nouveau, son ancien lien est remplacé ; une autre face garde le sien", () => {
+    const refs = (to: Vec3, at = 360) => ({ from: ref([600, 280, at], [1, 0.5, 0.5], [1, 0, 0]), to: ref(to, [0, 0, 0.5], [-1, 0, 0]) });
+    const first = extendTo(withCabinet(), "c1#1", "c2#0", right, face([900, 0, 0], [-1, 0, 0]), refs([900, 0, 0]), true);
+    if (typeof first === "string") throw new Error(first);
+    // The same side again (moved since: another centre), to another face: one link, the new one.
+    const moved = face([900, 280, 360], [1, 0, 0], [[900, 0, 0], [900, 560, 0], [900, 560, 720], [900, 0, 720]]);
+    const again = extendTo(first.doc, "c1#1", "c2#0", moved, face([1000, 0, 0], [-1, 0, 0]), { from: ref([900, 280, 360], [1, 0.5, 0.5], [1, 0, 0]), to: ref([1000, 0, 0], [1, 0, 0.5], [-1, 0, 0]) }, true);
+    if (typeof again === "string") throw new Error(again);
+    expect(again.doc.extendLinks!.map((l) => [l.id, l.to.face.center[0]])).toEqual([["pl2", 1000]]);
+    // Its top, linked too: the side's link stays.
+    const top = extendTo(again.doc, "c1#1", "c2#0", face([500, 280, 720], [0, 0, 1], [[0, 0, 720], [1000, 560, 720]]), face([0, 0, 800], [0, 0, -1]), { from: ref([500, 280, 720], [0.5, 0.5, 1], [0, 0, 1]), to: ref([0, 0, 800], [0, 0, 0], [0, 0, -1]) }, true);
+    if (typeof top === "string") throw new Error(top);
+    expect(top.doc.extendLinks!.map((l) => l.id)).toEqual(["pl2", "pl1"]);
+    // Saved before that: several links on one face — the older ones replaced by the last.
+    const twice = [...first.doc.extendLinks!, { ...again.doc.extendLinks![0]!, id: "pl9" }, ...top.doc.extendLinks!.filter((l) => l.id === "pl1").map((l) => ({ ...l, id: "pl8" }))];
+    expect(replacedLinks(twice)).toEqual(["pl1"]);
   });
 
   it("la liaison refaite : le mur s'éloigne, le caisson le suit ; il y est, rien ; retirée, plus rien", () => {
