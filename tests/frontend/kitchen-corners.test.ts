@@ -6,7 +6,7 @@ import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend
 import { fillerSized, kitchenFromPlan } from "../../frontend/src/document/kitchen-plan-build";
 import { CORNER_DOOR, CORNER_WALL_GAP, KITCHEN_PLAN, isLCorner, kitchenRuns, kitchenSizes, lArm, runGeometry, type CornerKind } from "../../frontend/src/document/kitchen-plan-shapes";
 import { proposeKitchen } from "../../frontend/src/document/kitchen-propose";
-import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature, type KitchenFloorPlan } from "../../frontend/src/document/types";
+import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature, type KitchenFloorPlan, type Vec3 } from "../../frontend/src/document/types";
 import { frontsParts } from "../../frontend/src/features/fronts-parts";
 import { turnedBox } from "../../frontend/src/features/turn-clear";
 import { fillRun, newItem } from "../../frontend/src/features/kitchen-run-items";
@@ -194,6 +194,24 @@ describe("angles de cuisine", () => {
     // A board that is no door does not open.
     const panel = made.doc.features.find((f) => f.type === "extrude" && f.name.startsWith("Panneau d'angle"))!;
     expect(doorSwing(made.doc, panel.id, [[0, 0, 0], [10, 10, 10]])).toBeNull();
+  });
+
+  it("la porte pliante du caisson d'angle en L s'ouvre à plat (180°), devant ses voisins, pas dans le caisson", () => {
+    const base = withKitchenPlan({ ...createReferencePlate(), features: [] } as CadDocument, plan({ corners: { left: "lcase" }, runs: {}, made: {} }));
+    const made = withKitchenBuilt(base.doc, base.id, proposeKitchen(kitchenPlanIn(base.doc, base.id)!));
+    if (typeof made === "string") throw new Error(made);
+    const layout = kitchenFromPlan(kitchenPlanIn(made.doc, base.id)!);
+    const leaf = layout.boxes.find((b) => b.name === "Porte pliante A")!;
+    const board = made.doc.features.find((f) => f.type === "extrude" && f.name === "Porte pliante A")!;
+    const swing = doorSwing(made.doc, board.id, [leaf.from, leaf.to])!;
+    expect(Math.abs(swing.angle)).toBe(180);
+    // A quarter of the way, its free edge has come out of the caisson, toward the room.
+    const out = leaf.door!.out;
+    const free: Vec3 = [0, 1].map((i) => (Math.abs(swing.pivot[i]! - leaf.from[i]!) < 1e-6 ? leaf.to[i]! : leaf.from[i]!)).concat(swing.pivot[2]) as Vec3;
+    const t = (Math.sign(swing.angle) * Math.PI) / 2;
+    const [dx, dy] = [free[0] - swing.pivot[0], free[1] - swing.pivot[1]];
+    const moved = [dx * Math.cos(t) - dy * Math.sin(t), dx * Math.sin(t) + dy * Math.cos(t)];
+    expect(moved[0]! * out[0] + moved[1]! * out[1]).toBeGreaterThan(100);
   });
 
   it("la plinthe passe aussi sous l'angle, sans chevaucher l'autre linéaire ni les meubles", () => {

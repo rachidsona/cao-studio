@@ -120,7 +120,7 @@ export function layoutPlan(doc: CadDocument, layout: KitchenLayout, frontThickne
     };
     push(sketch);
     const id = uniqueId(probe, "ex");
-    push({ id, type: "extrude", name: box.name, sketch: sketch.id, distance: side ? side.distance : h, operation: "new", ...(box.door ? { door: { hinge: turn(place, box.door.hinge), out: turn(place, box.door.out) } } : {}) });
+    push({ id, type: "extrude", name: box.name, sketch: sketch.id, distance: side ? side.distance : h, operation: "new", ...(box.door ? { door: { hinge: turn(place, box.door.hinge), out: turn(place, box.door.out), ...(box.door.angle ? { angle: box.door.angle } : {}) } } : {}) });
     plan.names[id] = box.name;
     const top = box.kind === "worktop" || box.kind === "splashback";
     // A filler set by hand keeps its own material, carcass or not.

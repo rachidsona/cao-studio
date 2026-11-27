@@ -22,7 +22,7 @@ export const CORNER_KINDS: Record<CornerKind, { label: string; summary: string }
   lemans: { label: "Meuble d'angle LeMans", summary: "Une porte (45 cm d'origine), deux plateaux qui pivotent et sortent : tout l'angle sert." },
   magic: { label: "Meuble d'angle Magic Corner", summary: "Une porte (45 cm d'origine) ; à l'ouverture, deux paniers sortent et ceux du fond viennent devant : tout l'angle sert." },
   l: { label: "Meuble d'angle en L", summary: "Un caisson sur chaque mur (90 cm d'origine), porte pliante : l'angle s'ouvre en grand." },
-  lcase: { label: "Caisson d'angle en L", summary: "Un seul caisson en L sur les deux murs (90 cm d'origine) : dessous, deux étagères et dessus en L, un fond contre chaque mur, un côté au bout de chaque bras jusqu'au sol, porte pliante comme le meuble en L." },
+  lcase: { label: "Caisson d'angle en L", summary: "Un seul caisson en L sur les deux murs (90 cm d'origine) : dessous, étagère et dessus en L, un fond contre chaque mur, un côté au bout de chaque bras jusqu'au sol, porte pliante comme le meuble en L, ouverte à plat (180°)." },
   diagonal: { label: "Meuble d'angle en biais", summary: "Sur les deux murs (90 cm d'origine), une porte à 45° : un pentagone, une étagère, l'angle se range de face." },
   carousel: { label: "Meuble d'angle carrousel", summary: "En L (90 cm d'origine), porte pliante ; deux plateaux tournants (trois quarts de cercle) : on fait tourner l'angle." },
 };

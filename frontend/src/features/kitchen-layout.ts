@@ -137,7 +137,7 @@ export interface KitchenBox {
    */
   appliance?: { model: string; finish: string; rotation: number };
   /** A board that opens as a door (a corner unit's): toward its hinge edge, the way it faces (kitchen frame). */
-  door?: { hinge: Vec3; out: Vec3 };
+  door?: { hinge: Vec3; out: Vec3; angle?: number };
   run?: string;
   /** Its own material (a filler set by hand: KitchenFloorPlan.fillerLook), else the fronts'. */
   material?: string;

@@ -41,7 +41,8 @@ const partNumber = (bodyId: string) => (bodyId.includes("#") ? Number(bodyId.sli
 
 /** The sense that brings the free edge out, in front of the panels. */
 function outwards(axis: Axis, pivot: Vec3, free: Vec3, normal: Vec3, angle = DOOR_ANGLE): Swing {
-  const r = rotationMatrix(axis, angle);
+  // The sense from a quarter turn at most: opened flat (180°), the free edge would be in the door's own plane.
+  const r = rotationMatrix(axis, Math.min(angle, 90));
   const d = [0, 1, 2].map((i) => free[i]! - pivot[i]!);
   const moved = [0, 1, 2].map((i) => r[i * 3]! * d[0]! + r[i * 3 + 1]! * d[1]! + r[i * 3 + 2]! * d[2]! - d[i]!);
   const out = moved[0]! * normal[0] + moved[1]! * normal[1] + moved[2]! * normal[2];
@@ -81,7 +82,7 @@ function frontSwing(doc: CadDocument, fronts: Parameters<typeof frontsParts>[0],
  * A door made as a plain board (a corner unit's, the top door of an oven column: ExtrudeFeature.door), from where it
  * stands (`box`, world): about the vertical of its hinge edge, on its front face, or the horizontal of its top or bottom.
  */
-function boardSwing(door: { hinge: Vec3; out: Vec3 }, [low, high]: Box): Swing | null {
+function boardSwing(door: { hinge: Vec3; out: Vec3; angle?: number }, [low, high]: Box): Swing | null {
   const axisOf = (v: Vec3) => [0, 1].find((i) => Math.abs(v[i]!) > 0.5);
   const at = (i: number, v: number) => (v > 0 ? high[i]! : low[i]!);
   // Hinged along its top (lift-up) or its bottom (a flap): about the horizontal line of that edge, on its front face.
@@ -107,7 +108,7 @@ function boardSwing(door: { hinge: Vec3; out: Vec3 }, [low, high]: Box): Swing |
     p[o] = at(o, door.out[o]!);
     return p;
   };
-  return outwards(2, point(true), point(false), door.out);
+  return outwards(2, point(true), point(false), door.out, door.angle);
 }
 
 /** How a door turns: about the vertical line of its hinge edge, at its front, outwards (a board door: from `box`). */

@@ -6,7 +6,7 @@
  *   de travail s'arrondit au-dessus de lui ;
  * - l'**angle en biais** : un caisson pentagone sur les deux murs (90 × 90 d'origine), dessous, étagère et dessus en
  *   pentagone, deux côtés, une porte à 45° et sa plinthe ; un morceau de plan de travail en triangle couvre son devant.
- * - le **caisson d'angle en L** : un seul caisson sur les deux murs (90 × 90 d'origine), dessous, deux étagères et dessus
+ * - le **caisson d'angle en L** : un seul caisson sur les deux murs (90 × 90 d'origine), dessous, étagère et dessus
  *   en L, un fond contre chaque mur, un côté au bout de chaque bras, jusqu'au sol, entaillé pour la plinthe ; sa porte
  *   pliante (un battant devant chaque bras), sa plinthe et le plan de travail sont ceux des linéaires, comme au meuble en L.
  * Chaque planche est une pièce du plan (document/kitchen-plan.ts dessine son contour à plat et le monte en hauteur) ;
@@ -114,8 +114,8 @@ export function diagonalCorner(name: string, at: At, arm: number, depth: number,
 }
 
 /**
- * A caisson in L, its arms `arm` long on both walls from the corner, `depth` deep (as `diagonalCorner`): bottom, two
- * shelves and top in L, a back against each wall (between bottom, top and the sides, as thin as the units' backs), a
+ * A caisson in L, its arms `arm` long on both walls from the corner, `depth` deep (as `diagonalCorner`): bottom, a
+ * shelf and top in L, a back against each wall (between bottom, top and the sides, as thin as the units' backs), a
  * side at the end of each arm down to the floor, notched at its front over `socle` for the plinth (`notch` deep, at the
  * end of the arm of the run that passes, and of the other's; 0: square). Its folding door and its plinth are the runs'
  * (document/kitchen-plan-build.ts, from its corner's fronts), as the L corner unit's.
@@ -126,9 +126,9 @@ export function lCorner(name: string, at: At, arm: number, depth: number, [z0, z
     const s = shaped(at, [[back, back], [arm - inner, back], [arm - inner, depth], [depth, depth], [depth, arm - inner], [back, arm - inner]], z, z + T);
     put(label, "panel", s.at, { outline: s.outline });
   };
-  // The bottom between the sides; the shelves too, in front of the backs, at a third and two thirds.
+  // The bottom between the sides; the shelf too, half way up, in front of the backs.
   plate("dessous", z0, T);
-  for (const k of [1, 2]) plate(`étagère ${k}`, z0 + ((z1 - z0) * k) / 3 - T / 2, T, BACK);
+  plate("étagère", (z0 + z1) / 2 - T / 2, T, BACK);
   plate("dessus", z1 - T);
   /** A side from the wall (`w`) to the front, across `c`…`c + T`: its outline seen from its face, the notch cut out. */
   const side = (label: string, onU: boolean, c: number, cut: number) => {

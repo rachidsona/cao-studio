@@ -121,7 +121,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (feature.startOffset !== undefined && !isFiniteNumber(feature.startOffset)) errors.push(`${where} : décalage de départ invalide.`);
       if (feature.direction !== undefined && !(isVec3(feature.direction) && (feature.direction as number[]).some((c) => c !== 0))) errors.push(`${where} : direction invalide.`);
       if (feature.strip !== undefined && (!isObject(feature.strip) || !isVec3(feature.strip.from) || !isVec3(feature.strip.to))) errors.push(`${where} : bande de face invalide.`);
-      if (feature.door !== undefined && (!isObject(feature.door) || !isVec3(feature.door.hinge) || !isVec3(feature.door.out))) errors.push(`${where} : porte invalide.`);
+      if (feature.door !== undefined && (!isObject(feature.door) || !isVec3(feature.door.hinge) || !isVec3(feature.door.out) || (feature.door.angle !== undefined && !(typeof feature.door.angle === "number" && feature.door.angle > 0 && feature.door.angle <= 180)))) errors.push(`${where} : porte invalide.`);
       if (
         feature.regions !== undefined &&
         (!Array.isArray(feature.regions) || feature.regions.length === 0 || !feature.regions.every((p) => Array.isArray(p) && p.length === 2 && p.every(isFiniteNumber)))

@@ -55,11 +55,11 @@ describe("meubles en forme", () => {
     expect(bottom.from[2]).toBe(s.plinth);
   });
 
-  it("caisson d'angle en L : un seul caisson, ses planches en L, deux étagères, un fond contre chaque mur, un côté au bout de chaque bras, jusqu'au sol, entaillés pour la plinthe ; sa porte pliante qui s'ouvre et sa plinthe sont celles des linéaires", () => {
+  it("caisson d'angle en L : un seul caisson, ses planches en L, une étagère, un fond contre chaque mur, un côté au bout de chaque bras, jusqu'au sol, entaillés pour la plinthe ; sa porte pliante qui s'ouvre et sa plinthe sont celles des linéaires", () => {
     const p: KitchenFloorPlan = { ...KITCHEN_PLAN, model: "L-left", lengthA: 3000, lengthB: 2500, island: false, corners: { left: "lcase" }, rest: { A: "end", B: "start" }, runs: { A: units([["base-bas-1-porte", 600]]), B: units([["base-bas-1-porte", 600]]) } };
     const layout = kitchenFromPlan(p);
     const pieces = layout.boxes.filter((b) => b.name.startsWith("Caisson d'angle en L"));
-    expect(pieces.map((b) => b.name.replace(/^Caisson d'angle en L \S+ — /, ""))).toEqual(["dessous", "étagère 1", "étagère 2", "dessus", "côté", "côté (2)", "fond", "fond (2)"]);
+    expect(pieces.map((b) => b.name.replace(/^Caisson d'angle en L \S+ — /, ""))).toEqual(["dessous", "étagère", "dessus", "côté", "côté (2)", "fond", "fond (2)"]);
     // In L, 92 × 92 on the walls (its bottom between the sides), 58 deep: no box, no other caisson in the corner.
     const bottom = pieces.find((b) => b.name.endsWith("dessous"))!;
     expect(bottom.outline).toHaveLength(6);
@@ -70,11 +70,11 @@ describe("meubles en forme", () => {
     const span = (b: KitchenBox, i: 0 | 1) => Math.round(b.to[i] - b.from[i]);
     expect([span(b1, 0) + span(b2, 0), span(b1, 1) + span(b2, 1)].sort()).toEqual([902, 905]);
     expect([b1.material, b2.material]).toEqual(["hdf", "hdf"]);
-    const shelf = pieces.find((b) => b.name.endsWith("étagère 1"))!;
+    const shelf = pieces.find((b) => b.name.endsWith("étagère"))!;
     expect([span(shelf, 0), span(shelf, 1)]).toEqual([899, 899]);
     // Its folding door, a leaf before each arm, as the L's: boards that open, hinged away from the corner.
     const leaves = layout.boxes.filter((b) => b.name.startsWith("Porte pliante"));
-    expect(leaves.map((b) => [b.name, !!b.door, b.corner])).toEqual([["Porte pliante A", true, true], ["Porte pliante B (droite)", true, true]]);
+    expect(leaves.map((b) => [b.name, !!b.door, b.corner, b.door?.angle])).toEqual([["Porte pliante A", true, true, 180], ["Porte pliante B (droite)", true, true, 180]]);
     // Its sides down to the floor; where a plinth passes under one, it is in its notch.
     const sides = pieces.filter((b) => b.name.includes("— côté"));
     expect(sides.map((b) => [b.from[2], b.profile?.points.length])).toEqual([[0, 6], [0, 6]]);

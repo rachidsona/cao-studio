@@ -284,7 +284,7 @@ function corners(p: KitchenFloorPlan, run: KitchenRun, off: [number, number], wa
     for (const f of corner.fronts) {
       if (f.kind === "door" && lowDoor.layout === "door") continue;
       const inset = f.kind === "door" ? 1.5 : 0;
-      box(f.name, f.kind === "filler" ? "filler" : "panel", band(f.from, f.to, D, D + FRONT, s.plinth + inset, s.base - inset), f.kind === "door" ? { ...unit, ...door } : unit);
+      box(f.name, f.kind === "filler" ? "filler" : "panel", band(f.from, f.to, D, D + FRONT, s.plinth + inset, s.base - inset), f.kind === "door" ? { ...unit, door: { ...door.door, ...(corner.kind === "lcase" ? { angle: 180 } : {}) } } : unit);
     }
     // The plinth goes on under the corner, to the end of its fronts; the run that passes closes the inner corner,
     // the other one stops against it.

@@ -385,9 +385,10 @@ export interface ExtrudeFeature extends FeatureBase {
   distance: number;
   /**
    * A door made as a plain board (a corner unit's): toward its hinge edge and the way it faces (world, unit vectors).
-   * « Ouvrir / fermer les portes » and a click turn it about the vertical through its hinge edge, at its front.
+   * « Ouvrir / fermer les portes » and a click turn it about the vertical through its hinge edge, at its front; `angle`
+   * that far (degrees, missing: as a cabinet's door) — a caisson in L's folding door, flat open at 180°.
    */
-  door?: { hinge: Vec3; out: Vec3 };
+  door?: { hinge: Vec3; out: Vec3; angle?: number };
   /**
    * Start of the extrusion (as Fusion's "Start: Offset"): this far from the sketch plane along its normal (mm,
    * negative: the other side). Absent or 0: from the sketch plane. Sketch profiles only.

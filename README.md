@@ -2765,8 +2765,8 @@ opération existante.
     caisson, deux paniers derrière la porte et deux au fond de l'angle qui viennent devant à l'ouverture ; **meuble
     d'angle en L 90 × 90**, un caisson sur chaque mur et une porte pliante ; **caisson d'angle en L** (`lcase`), un seul
     caisson en L sur les deux murs, bâti planche par planche (`lCorner` de `document/kitchen-shaped.ts`) — dessous,
-    deux étagères et dessus en L, un fond de 3 mm contre chaque mur, un côté au bout de chaque bras qui descend au sol,
-    entaillé pour la plinthe ; comme au meuble en L, sa porte pliante (un battant devant chaque bras, qui s'ouvre), sa
+    étagère et dessus en L, un fond de 3 mm contre chaque mur, un côté au bout de chaque bras qui descend au sol,
+    entaillé pour la plinthe ; comme au meuble en L, sa porte pliante (un battant devant chaque bras, qui s'ouvre à plat, à 180°), sa
     plinthe d'angle et le plan de travail sont ceux des linéaires, et la bande donne sa largeur entière et celle de sa
     porte, qui se change d'un clic (le bras suit) ; **carrousel**, le même L avec deux
     plateaux tournants (trois quarts de cercle) dans l'angle ; **en biais**, un pentagone sur les deux murs (90 × 90)
