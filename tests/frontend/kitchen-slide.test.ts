@@ -14,6 +14,18 @@ const fillOf = (p: KitchenFloorPlan, items: KitchenRunItem[]) => fillRun(runGeom
 const at = (p: KitchenFloorPlan, items: KitchenRunItem[]) => Object.fromEntries(fillOf(p, items).placed.filter((pl) => !isFiller(pl.item)).map((pl) => [pl.item.id, Math.round(pl.at)]));
 
 describe("glisser un meuble dans la place vide", () => {
+  it("une colonne remise là où une place est gardée en haut : elle la prend, les hauts d'après restent où ils étaient", () => {
+    // A column deleted (its room kept, up there too), then put back in the base room it left.
+    const [space, column, base, high] = units([["space", 348], ["tall-colonne-rangement", 900], ["base-bas-1-porte", 600], ["wall-haut-1-porte", 600]]) as [KitchenRunItem, KitchenRunItem, KitchenRunItem, KitchenRunItem];
+    const kept = { ...newItem([space, column, base, high], "space-wall", 1248), id: "kw" };
+    const items = [space, column, base, kept, high];
+    const p = plan("end", items);
+    // Over the base unit, after the column: where it stood before.
+    expect(at(p, items)[high.id]).toBe(1248);
+    // The room kept up there: before the column only.
+    expect(fillOf(p, items).spaces.filter((s) => s.row === "wall").map((s) => [Math.round(s.at), s.item.width])).toEqual([[0, 348]]);
+  });
+
   it("le dernier meuble glissé vers le bout : posé là, son voisin reste, la place qu'il laisse est gardée libre", () => {
     const items = units([["base-bas-2-portes", 1000], ["base-bas-1-porte", 600]]);
     const p = plan("end", items);

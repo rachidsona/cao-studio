@@ -316,9 +316,34 @@ function packedRows(g: RunGeometry, items: readonly KitchenRunItem[], heights: H
   // A column — or a column's or a fridge surround's caisson furnished by hand in its room — leaves no wall row over it.
   const columns = base.placed.filter((p) => p.entry.kind === "tall" || (isSpace(p.item) && heldTall(p.item))).map((p) => ({ from: p.at, to: p.at + p.item.width, what: p.entry.name, bottom: 0, top: Infinity }));
   const high = g.wall ? rowStretches(g, g.wall, heights.wallBottom, heights.wallTop).flatMap(([a, b]) => freeStretches(columns, a, b, 0, 1)) : [];
-  const highs = all.filter((i) => i.row === "wall");
+  const highs = keptBesideColumns(all.filter((i) => i.row === "wall"), columns, high[0]?.[0], rest);
   const wall = g.wall ? pack(high, highs, rest) : { placed: [], gaps: [], missing: highs };
   return { stretches, base, wall, ml, mr };
+}
+
+/**
+ * The room kept free in the wall row where a column now stands (one put back where it was deleted): the column takes
+ * it, the room on each side of it stays kept, the wall units after it where they were — a space made of its pieces.
+ * shortcut: the wall row read from its start (« Le reste » to the end); a rest at the start or both ends is left as it is.
+ */
+function keptBesideColumns<T extends { item: KitchenRunItem }>(items: T[], columns: { from: number; to: number }[], start: number | undefined, rest: string): T[] {
+  if (start === undefined || rest !== "end" || !columns.length) return items;
+  let x = start;
+  return items.flatMap((i) => {
+    const w = i.item.width;
+    if (!isSpace(i.item) || i.item.furnished) {
+      // A unit runs past a column it would stand in, as the packing puts it.
+      const hit = columns.find((c) => x < c.to - 0.5 && x + w > c.from + 0.5);
+      x = (hit ? hit.to : x) + w;
+      return [i];
+    }
+    const [a, b] = [x, x + w];
+    x = b;
+    let pieces: [number, number][] = [[a, b]];
+    for (const c of columns) pieces = pieces.flatMap(([u, v]): [number, number][] => (c.to <= u || c.from >= v ? [[u, v]] : [...(c.from - u >= 1 ? [[u, c.from] as [number, number]] : []), ...(v - c.to >= 1 ? [[c.to, v] as [number, number]] : [])]));
+    if (pieces.length === 1 && pieces[0]![0] === a && pieces[0]![1] === b) return [i];
+    return pieces.map(([u, v], k) => ({ ...i, item: { ...i.item, ...(k ? { id: `${i.item.id}~${k}` } : {}), width: Math.round((v - u) * 10) / 10 } }));
+  });
 }
 
 /**
