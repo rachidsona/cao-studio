@@ -23,6 +23,7 @@ import { bindDirectEntry } from "./ui/direct-entry";
 import { bindSketchBodies } from "./app/sketch-bodies";
 import { bindPlanLayout } from "./app/dressing/plan-layout-tool";
 import { bindKitchenPlan } from "./app/kitchen/kitchen-plan-tool";
+import { bindStripHover } from "./app/kitchen/strip-hover";
 import { bindProductionFolder } from "./app/workshop/production-folder";
 import { bindProjectTabs } from "./app/project-tabs";
 import { bindProjectOrganizer } from "./app/project-organizer";
@@ -260,6 +261,7 @@ async function start(): Promise<void> {
   bindZoneView(viewport, editor);
   bindPlanLayout(root, viewport, editor);
   bindKitchenPlan(root, viewport, editor);
+  bindStripHover(root, viewport, editor);
   bindTabPanels(root);
   bindSpaceSwitch(config, root.dataset.space, (m, k) => editor.notify(m, k));
   bindWorkflowSteps(root, editor);

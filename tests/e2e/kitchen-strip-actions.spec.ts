@@ -27,6 +27,20 @@ test("sur la bande : dupliquer, déplacer et supprimer un meuble, ôter et remet
   const bar = tool.locator("[data-strip-actions]");
   const names = () => units.evaluateAll((all) => all.map((g) => (g.querySelector("title")?.textContent ?? "").replace(/ \d+$/, "")));
   await expect(units).toHaveCount(2);
+  // A unit under the pointer in the 3D: ringed on the strip (and back, the strip's under the pointer lit in the 3D).
+  await page.waitForTimeout(1200);
+  const view = (await page.locator("canvas.cad-view").boundingBox())!;
+  const ringed = () => units.evaluateAll((all) => all.filter((g) => (g as SVGElement).style.filter).length);
+  let found = 0;
+  for (let i = 0; i < 80 && !found; i++) {
+    await page.mouse.move(view.x + view.width * (0.1 + 0.08 * (i % 10)), view.y + view.height * (0.2 + 0.08 * Math.floor(i / 10)));
+    await page.waitForTimeout(40);
+    found = await ringed();
+  }
+  expect(found).toBe(1);
+  await units.first().hover();
+  await page.mouse.move(view.x + 5, view.y + 5);
+  await expect.poll(ringed).toBe(0);
 
   // The unit of 60 is the one just added, chosen: its bar under the strip.
   await expect(bar).toContainText("Bas 1 porte");

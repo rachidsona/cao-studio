@@ -2856,6 +2856,9 @@ opération existante.
     son nom ; la cuisine refaite le refait ainsi. On compare le meuble à ce que le plan en ferait : ce que le plan change
     lui-même (le socle de toute la cuisine…) n'est pas un choix du meuble, et un réglage remis comme le plan le fait
     est oublié. Seule sa rotation ne se garde pas : un meuble de linéaire regarde toujours la pièce.
+  - **La bande et la 3D montrent le même meuble** (`app/kitchen/strip-hover.ts`) : survoler un meuble de la bande
+    éclaire son caisson et ses façades dans la 3D ; survoler un caisson du linéaire dans la 3D cerne son meuble sur la
+    bande.
   - **Un meuble poussé le long de son mur** dans la 3D (Pousser, Déplacer, Coller par face) y reste : le linéaire garde la place libre
     qu'il laisse, un « Espace libre » de sa rangée devant lui, hachuré sur la bande et compté dans la place libre
     (`document/kitchen-moves.ts`) ; l'espace gardé qui suit le dernier meuble poussé rétrécit d'autant (ou grandit),
@@ -3311,6 +3314,9 @@ opération existante.
     suit la souris comme si on l'avait pris par son dessus, et la poignée dit la distance parcourue.
   - Il s'aimante au ras des autres corps : contre le côté d'un voisin, dans l'alignement d'un fond ou d'une façade,
     au bout du plan de travail, contre un mur (Alt : sans aimant ; Échap : annuler).
+  - **Le long de son mur, il se tient au milieu de la place libre** entre ses voisins (ou les murs), comme sur la
+    bande du linéaire (`features/smart-align.ts`, `middleOfRoom`) ; la poignée dit ce qui reste libre de chaque côté,
+    « (milieu) » quand il y est.
   - **Il n'entre jamais dans un autre meuble** (`features/box-clear.ts`, `clearOf`) : amené dans un voisin, sous des
     meubles hauts ou à travers un plan de travail, il est posé **à côté, au ras**, du côté d'où il vient ; il ne passe
     au-delà d'un meuble que s'il l'a déjà dépassé de plus de la moitié de sa largeur, et ne va jamais plus loin que sa
