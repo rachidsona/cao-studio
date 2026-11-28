@@ -5,7 +5,7 @@
  * au bout du plan de travail, contre un mur, au milieu de la place libre entre ses voisins (la barre dit ce qui reste de chaque côté). Il n'entre jamais dans un autre meuble : amené dedans, il est posé à côté
  * de lui, au ras, du côté le plus proche (features/box-clear.ts) — ce qu'il touchait déjà (la plinthe sous lui, la
  * crédence derrière) ne le gêne pas ; il ne traverse pas non plus un mur de la Pièce (document/cabinet-clear.ts) (Alt : sans aimant ni arrêt, pour le poser où l'on veut). Un clic sur « ✥ » sans tirer le colle à une face ou
- * un coin qu'on clique ensuite (app/cabinet-stick.ts). « ↻ » le tourne d'un quart de tour sur place. « ⧉ Dupliquer »
+ * un coin qu'on clique ensuite (app/cabinet-stick.ts). « ↔ » se tire pour changer sa largeur par son bout, l'autre restant en place. « ↻ » le tourne d'un quart de tour sur place. « ⧉ Dupliquer »
  * (Ctrl + D) en met une copie à côté — sur son linéaire quand le Plan de cuisine l'a fait
  * (document/unit-duplicate.ts) — et « ✕ » le supprime avec ses façades.
  * Le document ne change qu'au lâcher, une annulation ; Échap rend le caisson à sa place. Rien ne s'affiche pendant un
@@ -18,7 +18,9 @@ import { bodyOrigin, deleteFeatures, findFeature, updateFeature } from "../docum
 import { withCabinetDuplicated } from "../document/unit-duplicate";
 import { featureOfBody, type CabinetFeature, type CadDocument, type Vec3 } from "../document/types";
 import { clearOf } from "../features/box-clear";
-import { alignBox, middleOfRoom, roomAlong, type Box } from "../features/smart-align";
+import { alignBox, middleOfRoom, pulledEdge, roomAlong, type Box } from "../features/smart-align";
+import { cabinetKeptClear } from "../document/cabinet-clear";
+import { cabinetProblem } from "../features/cabinet-parts";
 import { formatLength } from "../measurements/units";
 import { SnapGuides } from "../viewport/snap-guides";
 import type { Viewport } from "../viewport/viewport";
@@ -42,6 +44,8 @@ export function cabinetBodies(doc: CadDocument, bodies: readonly string[], cabin
 
 interface Drag {
   cabinet: CabinetFeature;
+  /** Slid along its wall, or its width pulled by its end (« ↔ »): then the width it would have. */
+  width?: number;
   bodies: string[];
   box: Box;
   others: Box[];
@@ -64,12 +68,15 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
   let drag: Drag | null = null;
   /** The grip that slides (it says how far while dragged). */
   let slider: HTMLElement | null = null;
+  /** The grip that pulls its width (it says the width while pulled). */
+  let widener: HTMLElement | null = null;
 
   const clear = () => {
     bar.grips.replaceChildren();
     bar.refresh();
     shown = "";
     slider = null;
+    widener = null;
   };
 
   const boxOf = (id: string) => bodyBox(viewport, id);
@@ -99,6 +106,7 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     if (!drag) return;
     const p = onPlane(event, drag.z);
     if (!p) return;
+    if (drag.width !== undefined) return pull(drag, p, event.altKey);
     let delta: Vec3 = [p[0] - drag.from[0], p[1] - drag.from[1], 0];
     // Along its wall (its width), unless Maj frees it on the floor.
     if (!event.shiftKey) {
@@ -127,6 +135,38 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     if (slider) slider.textContent = `✥ ${formatLength(moved, editor.unit)}${sides.length === 2 ? ` — ${sides.join(" | ")}${middle ? " (milieu)" : ""}` : ""}`;
   };
 
+  /** Its end pulled along its wall, from its other end: held on a neighbour's face, stopped before the next body. */
+  const pull = (d: Drag, p: Vec3, free: boolean) => {
+    const { along } = cabinetAxes(d.cabinet.rotation ?? 0);
+    const axis = Math.abs(along[0]) ? 0 : 1;
+    const sign = (along[axis] > 0 ? 1 : -1) as 1 | -1;
+    const by = (p[0] - d.from[0]) * along[0] + (p[1] - d.from[1]) * along[1];
+    const made = free ? { by, guides: [] } : pulledEdge(d.box, d.others, axis, sign, by, STICK_PX * viewport.worldPerPixel());
+    d.width = Math.max(100, Math.round(d.cabinet.width + made.by));
+    // Seen stretched from its other end, until it is let go.
+    const s = d.width / d.cabinet.width;
+    const fixed = sign > 0 ? d.box[0][axis]! : d.box[1][axis]!;
+    const rotation = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    rotation[axis * 4] = s;
+    const translation: Vec3 = [0, 0, 0];
+    translation[axis] = fixed * (1 - s);
+    for (const id of d.bodies) viewport.setBodyPose(id, { rotation, translation });
+    guides.show(made.guides, viewport);
+    if (widener) widener.textContent = `↔ ${formatLength(d.width, editor.unit)}`;
+  };
+
+  /** The width let go: as typed in the bar (against a wall or a neighbour, slid flush or refused, document/cabinet-clear.ts). */
+  const widen = async (cabinet: CabinetFeature, width: number) => {
+    if (cabinet.expressions?.width?.trim()) return editor.notify(`Sa largeur suit la formule « ${cabinet.expressions.width} » : changez-la dans Atelier › Paramètres.`, "info");
+    const next = { ...cabinet, width };
+    const problem = cabinetProblem(next);
+    if (problem) return editor.notify(problem, "error");
+    const kept = cabinetKeptClear(editor.doc, next);
+    if (typeof kept === "string") return editor.notify(kept, "error");
+    await editor.change(updateFeature(editor.doc, cabinet.id, () => kept));
+    editor.notify(`${cabinet.name} : largeur ${formatLength(width, editor.unit)}.`, "success");
+  };
+
   const finish = async (apply: boolean, click = false) => {
     const d = drag;
     if (!d) return;
@@ -135,6 +175,11 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     window.removeEventListener("pointerup", up);
     window.removeEventListener("keydown", key, true);
     guides.clear();
+    if (d.width !== undefined) {
+      if (apply && Math.abs(d.width - d.cabinet.width) >= 1) await widen(d.cabinet, d.width);
+      pose(d, null);
+      return show(true);
+    }
     if (apply && Math.hypot(d.delta[0], d.delta[1]) >= 1) {
       await editor.change(updateFeature(editor.doc, d.cabinet.id, (f) => (f.type === "cabinet" ? slideCabinet(f, d.delta) : f)));
       editor.notify(`${d.cabinet.name} déplacé de ${formatLength(Math.hypot(d.delta[0], d.delta[1]), editor.unit)}.`, "success");
@@ -150,7 +195,7 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     void finish(false);
   };
 
-  const start = (cabinet: CabinetFeature, event: PointerEvent) => {
+  const start = (cabinet: CabinetFeature, event: PointerEvent, widthPull = false) => {
     const bodies = cabinetBodies(editor.doc, viewport.displayedBodies, cabinet.id);
     const box = around(bodies.map(boxOf).filter((b): b is Box => !!b));
     if (!box) return;
@@ -164,7 +209,7 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     if (!from) return;
     const wall = wallBody(editor.doc);
     const solid = viewport.displayedBodies.filter((id) => !own.has(id) && !wall(id)).map(boxOf).filter((b): b is Box => !!b);
-    drag = { cabinet, bodies, box, others, solid: [...solid, ...roomKeepOuts(editor.doc)], z, from, delta: [0, 0, 0], screen: [event.clientX, event.clientY], offset };
+    drag = { cabinet, bodies, box, others, solid: [...solid, ...roomKeepOuts(editor.doc)], z, from, delta: [0, 0, 0], screen: [event.clientX, event.clientY], offset, ...(widthPull ? { width: cabinet.width } : {}) };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("keydown", key, true);
@@ -212,9 +257,17 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     };
     const copy = act("⧉ Dupliquer", "Une copie du caisson à côté de lui ; sur un linéaire du Plan de cuisine, juste après lui s'il y a la place (Ctrl + D)", "Dupliquer le caisson", () => duplicate(cabinet.id));
     const remove = act("✕", "Supprimer le caisson et ses façades ; sur un linéaire, sa place reste libre pour un autre meuble (Suppr)", "Supprimer le caisson", () => void editor.change(deleteFeatures(editor.doc, [cabinet.id]).next));
-    bar.grips.replaceChildren(slide, turn, copy, remove);
+    const wide = grip("↔", "Tirez pour changer sa largeur par son bout, l'autre restant en place : il s'arrête contre un voisin ou s'aligne sur lui (Alt : sans aimant, Échap : annuler)", "Tirer la largeur du caisson");
+    wide.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      event.stopPropagation();
+      event.preventDefault();
+      start(cabinet, event, true);
+    });
+    bar.grips.replaceChildren(slide, wide, turn, copy, remove);
     bar.refresh();
     slider = slide;
+    widener = wide;
   };
 
   const duplicate = (id: string) => {

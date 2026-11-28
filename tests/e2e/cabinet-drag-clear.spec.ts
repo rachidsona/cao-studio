@@ -336,3 +336,39 @@ test("tiré le long de son mur, un caisson se tient au milieu de la place libre 
   expect(Math.round((project.document.features as { type: string; origin?: number[] }[]).find((f) => f.type === "cabinet")!.origin![0]!)).toBe(1200);
   expect(errors).toEqual([]);
 });
+
+test("« ↔ » tire la largeur d'un caisson par son bout : il s'arrête contre son voisin", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-caisson-largeur");
+  // Two cabinets against wall A: 600 wide at x = 1000, a neighbour from x = 1800.
+  const cabinet = (id: string, name: string, x: number) => ({ id, type: "cabinet", name, origin: [x, -560, 0], width: 600, height: 870, depth: 560, thickness: 18, back: "applied", backThickness: 3, shelves: 1, plinth: 150, construction: "sides-through" });
+  await page.evaluate(async ({ url, features }) => {
+    const csrf = decodeURIComponent(document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "");
+    const now = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { version: number; document: Record<string, unknown> };
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf }, body: JSON.stringify({ document: { ...now.document, features }, base_version: now.version, message: "Caissons" }) });
+  }, { url: api, features: [cabinet("cb1", "Bas tiré", 1000), cabinet("cb2", "Voisin", 1800)] });
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await click(page, '[data-action="view"][data-view="top"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1200);
+  await page.locator('[data-head^="group:"]').filter({ hasText: "Bas tiré" }).first().click();
+  const grip = page.getByRole("toolbar", { name: "Caisson sélectionné" }).getByLabel("Tirer la largeur du caisson");
+  await expect(grip).toBeVisible();
+  const box = (await grip.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  // Far beyond its neighbour: it stops against it, 80 cm wide.
+  await page.mouse.move(box.x + box.width / 2 + 600, box.y + box.height / 2, { steps: 12 });
+  await expect(grip).toContainText("80");
+  await page.mouse.up();
+  await page.waitForTimeout(900);
+  await page.keyboard.press("Control+s");
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+  const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+  const pulled = (project.document.features as { id: string; width: number; origin: number[] }[]).find((f) => f.id === "cb1")!;
+  expect([Math.round(pulled.width), Math.round(pulled.origin[0]!)]).toEqual([800, 1000]);
+  expect(errors).toEqual([]);
+});

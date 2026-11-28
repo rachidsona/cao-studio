@@ -3016,6 +3016,9 @@ opération existante.
       tire, une ligne pointillée marque le **milieu** de sa place libre (« milieu, … cm de chaque côté ») ; à 6 cm
       près, il s'y met, la ligne pleine : lâché là, la place est partagée à parts égales de chaque côté — un caisson
       aménagé à la main aussi.
+    - **Cacher : Hauts, Casquette, Plan de travail** (`app/kitchen/kitchen-rows-hidden.ts`) : ces cases, en tête du
+      linéaire, cachent ces meubles de toute la cuisine dans la 3D pour atteindre ceux du dessous ; la vue seulement,
+      rien ne change dans le projet. Un clic sur un caisson dans la 3D le choisit déjà sur la bande.
     - **Sans portes** (`app/kitchen/strip-doors.ts`) : la case, à côté de « Plan fixe », dessine la bande sans les
       portes ni les façades de tiroir — l'intérieur des caissons se voit : étagères, cloisons, tiroirs (leurs caissons
       en pointillés), tiroirs à l'anglaise, traverses d'un bas évier ; les portes et panneaux d'angle en pointillés,
@@ -3335,6 +3338,9 @@ opération existante.
     - Sur un coin : son coin le plus proche dessus. Échap annule ; la vue tourne toujours en glissant.
     - **Jamais dans un mur ni dans un voisin** : visé près d'un angle de la pièce (centré, il dépasserait dans le mur
       d'à côté), il est glissé au ras de ce mur, le dos contre celui qu'on a cliqué (`clearOf`).
+  - **↔** se tire pour changer sa largeur par son bout, l'autre restant en place : il s'aligne sur la face d'un voisin
+    et s'arrête contre le premier corps au-delà (`features/smart-align.ts`, `pulledEdge`) ; lâché, la largeur s'applique
+    comme tapée dans la barre (Alt : sans aimant ; Échap : annuler). Un meuble du Plan de cuisine fait suivre le plan.
   - **↻** le tourne d'un quart de tour sur place.
   - Le document ne change qu'au lâcher ou au clic, une annulation (`app/cabinet-drag.ts`, `app/cabinet-stick.ts`).
 - **Pièce** (groupe « Pièce ») : le relevé de la pièce, tel qu'on le mesure.

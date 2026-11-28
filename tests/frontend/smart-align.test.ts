@@ -1,7 +1,7 @@
 /** L'accrochage intelligent dans le modèle : un point de face aligné sur des coins, un corps tiré aligné sur les autres. */
 import { describe, expect, it } from "vitest";
 import type { Vec3 } from "../../frontend/src/document/types";
-import { alignBox, alignPoint, middleOfRoom, roomAlong, type Box } from "../../frontend/src/features/smart-align";
+import { alignBox, alignPoint, middleOfRoom, pulledEdge, roomAlong, type Box } from "../../frontend/src/features/smart-align";
 
 describe("accrochage intelligent en 3D", () => {
   it("un point d'une face prend le X ou le Y d'un coin proche, jamais la coordonnée hors de la face", () => {
@@ -54,5 +54,15 @@ describe("accrochage intelligent en 3D", () => {
     expect(middleOfRoom(box, others, [400, 0, 0], 0, 20)).toBeNull();
     // Nothing on one side: no middle.
     expect(middleOfRoom(box, others.slice(1), [590, 0, 0], 0, 20)).toBeNull();
+  });
+
+  it("le bout d'un caisson tiré s'aligne sur un voisin et s'arrête contre le premier corps au-delà", () => {
+    const box: Box = [[0, -600, 100], [600, 0, 900]];
+    // A wall unit's side above at x = 800 (not in its way), a neighbour from x = 1000.
+    const others: Box[] = [[[800, -350, 1450], [1400, 0, 2150]], [[1000, -600, 100], [1600, 0, 900]]];
+    expect(pulledEdge(box, others, 0, 1, 195, 10).by).toBe(200);
+    expect(pulledEdge(box, others, 0, 1, 700, 10)).toEqual({ by: 400, guides: [] });
+    // Its start pulled the other way (towards −x), nothing there: as far as asked.
+    expect(pulledEdge(box, others, 0, -1, 150, 10).by).toBe(150);
   });
 });

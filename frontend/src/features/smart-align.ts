@@ -101,3 +101,20 @@ export function middleOfRoom(box: Box, others: readonly Box[], translate: Vec3, 
   const at = (v: number): Vec3 => [0, 1, 2].map((k) => (k === axis ? v : (box[0][k]! + box[1][k]!) / 2 + t[k]!)) as Vec3;
   return { translate: t, guides: [[at(lo), at(box[0][axis]! + shift)], [at(box[1][axis]! + shift), at(hi)]] };
 }
+
+/**
+ * The end of a box along `axis` on the side `sign` (+1: its max face) pulled out by `by` mm (negative: in): held on a
+ * face or a middle of another box within `tolerance`, never beyond the first box past it. How far, and the guides.
+ */
+export function pulledEdge(box: Box, others: readonly Box[], axis: number, sign: 1 | -1, by: number, tolerance: number): { by: number; guides: Guide[] } {
+  const edge = sign > 0 ? box[1][axis]! : box[0][axis]!;
+  const [lo, hi] = roomAlong(box, others, [0, 0, 0], axis);
+  const thin: Box = [[...box[0]], [...box[1]]];
+  thin[0][axis] = thin[1][axis] = edge;
+  const t: Vec3 = [0, 0, 0];
+  t[axis] = sign * by;
+  const held = alignBox(thin, others, t, [axis], tolerance);
+  const limit = sign > 0 ? hi - edge : edge - lo;
+  const d = sign * held.translate[axis]!;
+  return d > limit ? { by: limit, guides: [] } : { by: d, guides: held.guides };
+}

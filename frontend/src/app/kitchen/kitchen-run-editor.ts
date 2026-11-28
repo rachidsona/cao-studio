@@ -34,7 +34,7 @@ import { fillerFromGap, fillerRows } from "./kitchen-run-fillers";
 import { caissonActions, furnishItem, insideRows } from "./kitchen-unit-inside";
 import { heldRows } from "./kitchen-held-rows";
 import { widenRows } from "./kitchen-widen-rows";
-import { doorsToggle } from "./strip-doors";
+import { doorsToggle, rowsToggle } from "./strip-doors";
 import { heldFace } from "./held-face";
 import { sizeFields } from "./kitchen-unit-sizes";
 import { stripActions, withRoomLeft } from "./kitchen-strip-actions";
@@ -295,7 +295,7 @@ export class RunEditor {
       // The walls and the strip stay in sight while the panel scrolls, as the schema of the dressing plan (« Plan fixe »).
       trackFixedPlan(el("div", { class: `${fixedPlanClass()} -mx-2.5 space-y-1.5 border-b border-gray-200 bg-white px-2.5 pt-1.5 pb-2 dark:border-gray-700 dark:bg-gray-900`, "data-run-fixed": "" },
         // Fixed at the top while the panel scrolls, or scrolling with it (kept for the dressing too).
-        el("div", { class: "flex items-center justify-end gap-3" }, doorsToggle(() => this.host.redraw()), fixedPlanToggle(() => this.host.redraw())),
+        el("div", { class: "flex flex-wrap items-center justify-end gap-x-3 gap-y-1" }, rowsToggle(), doorsToggle(() => this.host.redraw()), fixedPlanToggle(() => this.host.redraw())),
         this.walls(),
         el("div", { class: "border border-gray-200 bg-white p-1 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200", "data-run-strip": run.id }, strip),
       )),

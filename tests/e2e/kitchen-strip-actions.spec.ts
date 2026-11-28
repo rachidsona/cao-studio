@@ -38,6 +38,12 @@ test("sur la bande : dupliquer, déplacer et supprimer un meuble, ôter et remet
     found = await ringed();
   }
   expect(found).toBe(1);
+  // « Cacher : Hauts » and back, in the view only.
+  const hide = tool.locator('[data-hide-row="wall"]');
+  await hide.check();
+  await expect(hide).toBeChecked();
+  await hide.uncheck();
+  await expect(units).toHaveCount(2);
   await units.first().hover();
   await page.mouse.move(view.x + 5, view.y + 5);
   await expect.poll(ringed).toBe(0);

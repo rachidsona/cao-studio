@@ -17,6 +17,9 @@ export function doorsHidden(): boolean {
 }
 
 /** The « Sans portes » box: ticked, the units are drawn open; `changed` draws the panel again. */
+/** The boxes beside it that hide rows of the kitchen in the 3D. */
+export { rowsToggle } from "./kitchen-rows-hidden";
+
 export function doorsToggle(changed: () => void): HTMLElement {
   const box = el("input", { type: "checkbox", checked: doorsHidden(), "aria-label": "Sans portes", "data-strip-no-doors": "" });
   box.addEventListener("change", () => {
