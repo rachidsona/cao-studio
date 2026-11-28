@@ -6,7 +6,7 @@
  * un linéaire change, en une seule annulation, et chaque pièce faite garde son linéaire (`made`), pour le rouvrir ; un
  * caisson aménagé à la main suit sa place (caisson-follow.ts). Pur.
  */
-import { isCaisson, withCaissonsFollowing, withRoomsLinked } from "./caisson-follow";
+import { isCaisson, withCaissonsFacing, withCaissonsFollowing, withRoomsLinked } from "./caisson-follow";
 import { decorateKitchen, layoutPlan } from "./kitchen-plan";
 import { kitchenFromPlan, type KitchenRoomInfo } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
@@ -158,7 +158,7 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
   doc = withWorkBack(doc, base, work, Object.values(made).flat());
   // The caissons furnished by hand go where their room now is.
   const followed = withCaissonsFollowing(doc, plan, layout.kept);
-  doc = followed.doc;
+  doc = withCaissonsFacing(followed.doc, plan, old.frontMaterial ?? FRONT_MATERIAL, plan.frontMaterial ?? FRONT_MATERIAL, FRONT_MATERIAL);
   // Each run as it is placed: a unit put in a room kept free stands there in its order too.
   const runs = plan.runs && Object.fromEntries(Object.entries(plan.runs).map(([run, items]) => [run, layout.fills[run]?.items ?? items]));
   doc = updateFeature(doc, planId, (f) => (f.type === "sketch" ? { ...f, ...planSketch(plan), kitchenPlan: { ...plan, ...(runs ? { runs } : {}), made } } : f));

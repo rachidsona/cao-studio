@@ -10,9 +10,10 @@ import { cabinetAxes } from "./kitchen-catalog";
 import { findFeature, updateFeature } from "./operations";
 import type { OffsetRecord } from "./sketch";
 import { withSketchExtrusion } from "./sketch-extrusion";
-import type { CadDocument, KitchenFloorPlan, KitchenRunItem, PlaneFrame, SketchFeature, Vec3 } from "./types";
+import { PART_SEPARATOR, type CadDocument, type KitchenFloorPlan, type KitchenRunItem, type PlaneFrame, type SketchFeature, type Vec3 } from "./types";
 import type { KitchenUnit } from "../features/kitchen-layout";
 import { heldTall } from "../features/kitchen-run-items";
+import { nichePartsIn } from "../features/niche-parts";
 import { placePoint } from "../features/room-runs";
 import { nearestPlane } from "../sketcher/frame";
 import { extrusionGroups, isPartition, rebuildChain } from "../sketcher/partition-history";
@@ -49,6 +50,27 @@ export function runFeatures(doc: CadDocument, plan: KitchenFloorPlan, run: strin
 
 /** A room of the plan where the plan stands in the room, as its cabinets are (kitchen-plan.ts). */
 const placed = (plan: KitchenFloorPlan, u: KitchenUnit) => (plan.place ? { origin: placePoint(plan.place, u.origin), rotation: (u.rotation + plan.place.quarter * 90) % 360 } : u);
+
+/**
+ * The caissons furnished in rooms kept free that were pushed along their run in the 3D since `prev` (item id → mm
+ * towards the run's end, from where the plan puts them): their rooms are to go there (kitchen-slide.ts). Turned, or
+ * moved off their wall: not.
+ */
+export function caissonsMoved(prev: CadDocument, doc: CadDocument, plan: KitchenFloorPlan, kept: readonly KitchenUnit[]): Record<string, number> {
+  const moved: Record<string, number> = {};
+  for (const u of kept) {
+    const item = u.run ? plan.runs?.[u.run]?.find((i) => i.id === u.item) : undefined;
+    const [was, now] = [item?.furnished ? findFeature(prev, item.furnished) : undefined, item?.furnished ? findFeature(doc, item.furnished) : undefined];
+    const record = now?.type === "sketch" ? partitionOf(now) : undefined;
+    if (was?.type !== "sketch" || now?.type !== "sketch" || !was.frame || !now.frame || !record || sameFrame(was.frame, now.frame)) continue;
+    const there = panelsFrame(placed(plan, u), record.step.depth!);
+    if (sameFrame(there, now.frame) || !near(there.normal, now.frame.normal, 1e-3)) continue;
+    const delta = [0, 1, 2].map((k) => now.frame!.origin[k]! - there.origin[k]!) as Vec3;
+    const d = dot(delta, there.xDir);
+    if (Math.abs(d) >= 1 && [0, 1, 2].every((k) => Math.abs(delta[k]! - d * there.xDir[k]!) < 1)) moved[u.item!] = Math.round(d * 10) / 10;
+  }
+  return moved;
+}
 
 /** The caisson's Répartition at a new width, on its new frame: its boards made again, each keeping its material. */
 function withCaissonResized(doc: CadDocument, sketch: SketchFeature, frame: PlaneFrame, width: number, height?: number): { doc: CadDocument; problems: string[] } | string {
@@ -148,4 +170,27 @@ export function withRoomsLinked(doc: CadDocument, old: KitchenFloorPlan, kept: r
   if (!found.size) return next;
   const runs = Object.fromEntries(Object.entries(next.runs ?? {}).map(([run, list]) => [run, list.map((i) => (found.has(i.id) && !i.furnished ? { ...i, ...found.get(i.id) } : i))]));
   return { ...next, runs };
+}
+
+/**
+ * « Matière des façades » of the plan changed from `from` to `to`: the fronts of the caissons furnished in its rooms
+ * (their doors, their drawers' fronts) take it — those in `from`, in the plan's first one (white lacquer) or in none;
+ * a material chosen by hand on a front stays.
+ */
+export function withCaissonsFacing(doc: CadDocument, plan: KitchenFloorPlan, from: string, to: string, first = "lacquer-white"): CadDocument {
+  const held = new Set(Object.values(plan.runs ?? {}).flat().map((i) => i.furnished).filter(Boolean));
+  if (from === to || !held.size) return doc;
+  const info = { ...doc.bodyInfo };
+  let changed = false;
+  for (const f of doc.features) {
+    if (f.type !== "niche" || !f.sketch || !held.has(f.sketch) || !(f.fill === "doors" || f.fill === "door" || (f.fill === "drawers" && !f.inner))) continue;
+    nichePartsIn(doc.features, f).forEach((p, i) => {
+      const key = `${f.id}${PART_SEPARATOR}${i}`;
+      const now = info[key]?.material ?? info[f.id]?.material;
+      if (p.role !== "front" || (now && now !== from && now !== first)) return;
+      info[key] = { ...info[key], material: to };
+      changed = true;
+    });
+  }
+  return changed ? { ...doc, bodyInfo: info } : doc;
 }

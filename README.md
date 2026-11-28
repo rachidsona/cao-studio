@@ -2707,7 +2707,10 @@ opération existante.
   d'un côté, en plus de l'autre) ; les cotes des murs, la hauteur sous plafond, la matière des **façades** (seulement ce qui s'y prête : bois, mélaminé, MDF, HDF, stratifié, laque, verre — ni
   marbre, ni métal, ni fond, ni tasseau : `frontChoices`), les **façades de toute la cuisine**, dans leur carte « Façades » à part (avec la case **« Caissons en Répartition »** :
   chaque meuble posé, proposé ou refait devient aussitôt un caisson du dressing à sa place — étagères, cloisons, niches,
-  tiroirs s'y règlent comme au dressing, le plan lui garde sa place, le plan de travail et la plinthe le suivent. Il
+  tiroirs s'y règlent comme au dressing, le plan lui garde sa place, le plan de travail et la plinthe le suivent —
+  aussi quand il est poussé le long de son mur dans la 3D (Déplacer) : sa place libre va là où il est
+  (`caissonsMoved`, `document/caisson-follow.ts`). La matière des façades changée passe sur ses portes et ses façades
+  de tiroirs, sauf sur une façade dont la matière a été choisie à la main (`withCaissonsFacing`). Il
   garde tout ce que son meuble avait : évier, plaque, four et leurs découpes, et pour l'habillage de réfrigérateur ses
   côtés et son réfrigérateur autour de son caisson (`heldUnits`) ; une colonne reste sans plan de travail. **Ses
   côtés descendent au sol comme ceux du meuble**, entaillés à l'avant sur la hauteur du socle pour laisser passer la

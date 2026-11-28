@@ -12,6 +12,8 @@ import { kitchenPlanIn, withKitchenBuilt } from "./kitchen-floor";
 import { kitchenFromPlan } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
 import { islandMoved, itemsMoved, unitsMoved } from "./kitchen-moves";
+import { caissonsMoved } from "./caisson-follow";
+import { itemSlid } from "./kitchen-slide";
 import { FRONT, kitchenPlanProblem, kitchenRuns, kitchenSizes, runGeometry } from "./kitchen-plan-shapes";
 import { findFeature } from "./operations";
 import { keptOf } from "./kitchen-keep";
@@ -42,8 +44,11 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
     const plan = kitchenPlanIn(doc, sketch.id);
     if (!plan) continue;
     const room = kitchenRoomInfo(doc, plan);
-    const units = kitchenFromPlan(plan, room).units;
+    const { units, kept } = kitchenFromPlan(plan, room);
     const runs: Record<string, KitchenRunItem[]> = { ...plan.runs };
+    const rest = { ...plan.rest };
+    // A caisson furnished in a room kept free, pushed along its run in the 3D: its room goes there, the worktop and plinth with it.
+    const pushed = caissonsMoved(prev, doc, plan, kept);
     let corners: CornerSetting = { corners: plan.corners, wallCorners: plan.wallCorners, cornerSizes: plan.cornerSizes };
     // The island moved (one of its units, or all the same way): it goes there whole, its units as they were on it —
     // unless the plan cannot have it there (against a wall, on another run).
@@ -163,6 +168,15 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
         runs[run.id] = items.map((it, j) => (j === k ? next : it));
         changed = true;
       });
+      for (const [id, by] of Object.entries(pushed)) {
+        if (!(runs[run.id] ?? []).some((i) => i.id === id)) continue;
+        const s = kitchenSizes(plan);
+        const slid = itemSlid({ ...plan, runs, rest }, run, room?.[run.id], runs[run.id]!, { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop }, id, by);
+        if (typeof slid === "string") continue;
+        runs[run.id] = slid.items;
+        rest[run.id] = slid.rest;
+        changed = true;
+      }
       if (Object.keys(moved).length) {
         const s = kitchenSizes(plan);
         const kept = itemsMoved(runGeometry(plan, run, room?.[run.id]), runs[run.id] ?? [], { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop }, moved);
@@ -173,7 +187,7 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
       }
     }
     if (!changed) continue;
-    const made = withKitchenBuilt(doc, sketch.id, { runs, ...corners, ...island });
+    const made = withKitchenBuilt(doc, sketch.id, { runs, rest, ...corners, ...island });
     if (typeof made !== "string") doc = made.doc;
   }
   return doc;
