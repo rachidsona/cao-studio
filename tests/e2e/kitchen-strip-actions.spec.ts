@@ -255,3 +255,61 @@ test("sur la bande : la place libre de chaque côté du meuble choisi se tape, e
   expect(await other.locator("[data-item]").evaluateAll((all) => all.map((g) => g.querySelector("title")?.textContent ?? ""))).toContain("Bas 1 porte 60");
   expect(errors).toEqual([]);
 });
+
+test("caissons en Répartition : survol relié, place libre tapée, copier-coller sur un autre mur, poignées ✥ et ↔ dans la 3D", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-bande-caissons");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  const add = tool.locator('[data-fold="add"]');
+  if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+  await tool.locator("[data-run-as-caissons]").check();
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  const strip = tool.locator('[data-run-strip="A"]');
+  const held = strip.locator("[data-held]");
+  await expect(held).toHaveCount(2, { timeout: 60_000 });
+  await page.waitForTimeout(1500);
+
+  // A caisson under the pointer in the 3D: ringed on the strip.
+  const view = (await page.locator("canvas.cad-view").boundingBox())!;
+  const ringed = () => held.evaluateAll((all) => all.filter((g) => (g as SVGElement).style.filter).length);
+  let found = 0;
+  for (let i = 0; i < 100 && !found; i++) {
+    await page.mouse.move(view.x + view.width * (0.08 + 0.08 * (i % 10)), view.y + view.height * (0.2 + 0.07 * Math.floor(i / 10)));
+    await page.waitForTimeout(40);
+    found = await ringed();
+  }
+  expect(found).toBe(1);
+
+  // The second chosen: its free room typed, 50 left on its right.
+  await held.nth(1).click();
+  const right = strip.locator('[data-edit-gap="right"]');
+  await expect(right).toHaveCount(1);
+  await right.click();
+  await page.locator("[data-strip-width]").fill("50");
+  await page.locator("[data-strip-width]").press("Enter");
+  await expect(strip.locator('[data-edit-gap="right"]')).toHaveText(/glisse50$/, { timeout: 60_000 });
+
+  // Copied, pasted on wall B: a caisson there too.
+  await strip.locator("svg").press("Control+c");
+  await tool.locator('[data-go-run="B"]').click();
+  const other = tool.locator('[data-run-strip="B"]');
+  await expect(other).toBeVisible();
+  const before = await other.locator("[data-held], [data-item]").count();
+  await other.locator("svg").press("Control+v");
+  await expect(other.locator("[data-held], [data-item]")).toHaveCount(before + 1, { timeout: 60_000 });
+
+  // A caisson chosen in the 3D: the grips that slide it and pull its width.
+  await page.getByLabel(/^Navigateur : corps/).getByText(/^Caisson — /).first().click();
+  const bar = page.getByRole("toolbar", { name: "Caisson sélectionné" });
+  await expect(bar.getByLabel("Déplacer le caisson")).toBeVisible();
+  await expect(bar.getByLabel("Tirer la largeur du caisson")).toBeVisible();
+  expect(errors).toEqual([]);
+});

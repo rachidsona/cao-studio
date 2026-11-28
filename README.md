@@ -2862,6 +2862,10 @@ opération existante.
   - **La bande et la 3D montrent le même meuble** (`app/kitchen/strip-hover.ts`) : survoler un meuble de la bande
     éclaire son caisson et ses façades dans la 3D ; survoler un caisson du linéaire dans la 3D cerne son meuble sur la
     bande.
+  - **Les caissons en Répartition aussi** (`app/kitchen/held-drag.ts`) : survol relié, place libre tapée autour du
+    caisson choisi, copier-coller (le meuble dont il est fait, à ses cotes, refait en caisson ; pas son aménagement fait à
+    la main), « ✥ » et « ↔ » dans la 3D (sa place dans le linéaire glisse ou s'élargit, le caisson refait), « Cacher :
+    Hauts ».
   - **Un meuble poussé le long de son mur** dans la 3D (Pousser, Déplacer, Coller par face) y reste : le linéaire garde la place libre
     qu'il laisse, un « Espace libre » de sa rangée devant lui, hachuré sur la bande et compté dans la place libre
     (`document/kitchen-moves.ts`) ; l'espace gardé qui suit le dernier meuble poussé rétrécit d'autant (ou grandit),

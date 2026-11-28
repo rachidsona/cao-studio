@@ -83,7 +83,9 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
   };
   const copy = (id: string) => {
     const item = items.find((i) => i.id === id);
-    if (item && !isSpace(item)) copied = structuredClone(item);
+    // A caisson in Répartition: the unit it was made of, at its sizes (the plan makes it a caisson again; not what was furnished by hand in it).
+    if (item && isSpace(item) && item.furnished && item.from) copied = { id: item.id, model: item.from, width: item.width, ...(item.depth ? { depth: item.depth } : {}) };
+    else if (item && !isSpace(item)) copied = structuredClone(item);
   };
   // After the unit chosen when it is of its row, else at the end of its row (features/kitchen-run-items.ts `insertItem`).
   const paste = (after: string | null) => copied && host.putAfter({ ...copied, id: newItem(items, copied.model, copied.width).id }, after ?? "");
@@ -181,11 +183,11 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
       } else if (mod && event.key.toLowerCase() === "d" && ids.length) {
         duplicate(ids);
         done();
-      } else if (mod && event.key.toLowerCase() === "c" && ids.length === 1) {
-        copy(ids[0]!);
+      } else if (mod && event.key.toLowerCase() === "c" && one) {
+        copy(one);
         done();
       } else if (mod && event.key.toLowerCase() === "v" && copied) {
-        paste(ids.length === 1 ? ids[0]! : null);
+        paste(one);
         done();
       } else if ((event.key === "ArrowLeft" || event.key === "ArrowRight") && one && !mod) {
         step(one, event.key === "ArrowLeft" ? -1 : 1);

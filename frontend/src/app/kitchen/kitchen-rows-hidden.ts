@@ -8,6 +8,8 @@ import { kitchenRoomInfo } from "../../document/kitchen-plan-room";
 import { bodyOrigin, findFeature } from "../../document/operations";
 import { featureOfBody, type CadDocument } from "../../document/types";
 import { el } from "../../ui/dom";
+import { itemEntry, rowOf } from "../../features/kitchen-run-items";
+import { selectedHeld } from "./held-drag";
 import type { Viewport } from "../../viewport/viewport";
 import type { Editor } from "../editor";
 
@@ -39,6 +41,10 @@ const rows = new WeakMap<CadDocument, Map<string, Map<string, HiddenRow>>>();
 /** The row of the plan a body is a piece of (a front: its cabinet's), or null. */
 function rowOfBody(doc: CadDocument, bodyId: string): HiddenRow | null {
   const f = findFeature(doc, featureOfBody(bodyOrigin(doc, bodyId)));
+  // A piece of a caisson in Répartition: the row of the room the plan keeps for it.
+  const held = f && "sketch" in f && f.sketch ? selectedHeld(doc, [bodyId]) : null;
+  const item = held ? kitchenPlanIn(doc, held.plan)?.runs?.[held.run]?.find((i) => i.id === held.item) : undefined;
+  if (item) return rowOf(itemEntry(item)) === "wall" ? "wall" : null;
   const named = f?.type === "fronts" ? findFeature(doc, f.cabinet) : f;
   const owner = named ? kitchenRunOf(doc, named.id) : null;
   if (!named || !owner) return null;

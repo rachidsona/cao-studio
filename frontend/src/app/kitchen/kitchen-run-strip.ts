@@ -277,13 +277,16 @@ export function runStrip(host: StripHost): SVGSVGElement {
     if (host.menu) group.addEventListener("contextmenu", (event) => (event.preventDefault(), host.menu!(pl.item.id, event)));
     if (chosen && host.resize && !applianceOf(pl.item)) handle = () => edge(node, pl, y(z + height), height, host.resize!);
     node.append(group);
-    // The chosen unit: the free room on each side of it, clicked to type how much is left there (it slides).
-    const [lo, hi] = chosen && host.edit && host.slide ? slideRoom(fill, pl.item.id) : [0, 0];
-    for (const [side, free, mid] of [["left", -lo, pl.at + lo / 2], ["right", hi, pl.at + pl.item.width + hi / 2]] as const) {
-      if (free >= 1) node.insertAdjacentHTML("beforeend", `<text x="${mid}" y="${y(z + height / 2)}" text-anchor="middle" font-size="90" class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-gap="${side}" data-edit-id="${escapeHtml(pl.item.id)}" data-edit-width="${free}" data-edit-room="${hi - lo}"><title>Place libre ${side === "left" ? "à gauche" : "à droite"} : cliquer pour la taper, le meuble glisse</title>${Number((free / 10).toFixed(1)).toLocaleString("fr-FR")}</text>`);
-    }
   }
   handle();
+  // The unit or the caisson chosen: the free room on each side of it, clicked to type how much is left there (it slides).
+  const picked = host.chosen ?? (host.other?.kind === "caisson" ? host.other.id : null);
+  const pc = picked && host.edit && host.slide ? [...fill.placed, ...fill.spaces.filter((q) => q.item.furnished)].find((q) => q.item.id === picked) : undefined;
+  const [lo, hi] = pc ? slideRoom(fill, pc.item.id) : [0, 0];
+  const mid = pc?.row === "wall" ? (s.wallBottom + s.wallTop) / 2 : (s.plinth + s.base) / 2;
+  for (const [side, free, at] of pc ? ([["left", -lo, pc.at + lo / 2], ["right", hi, pc.at + pc.item.width + hi / 2]] as const) : []) {
+    if (free >= 1) node.insertAdjacentHTML("beforeend", `<text x="${at}" y="${y(mid)}" text-anchor="middle" font-size="90" class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-gap="${side}" data-edit-id="${escapeHtml(pc!.item.id)}" data-edit-width="${free}" data-edit-room="${hi - lo}"><title>Place libre ${side === "left" ? "à gauche" : "à droite"} : cliquer pour la taper, le meuble glisse</title>${Number((free / 10).toFixed(1)).toLocaleString("fr-FR")}</text>`);
+  }
   // A width clicked: not a drag of its unit, the calculator.
   if (host.edit) {
     for (const t of node.querySelectorAll<SVGElement>("[data-edit-item], [data-edit-side], [data-edit-gap]")) {

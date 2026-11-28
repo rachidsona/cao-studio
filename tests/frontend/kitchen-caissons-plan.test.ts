@@ -7,6 +7,7 @@ import { syncKitchenPlans } from "../../frontend/src/document/kitchen-sync";
 import { createReferencePlate, type CadDocument, type NicheFeature, type SketchFeature, type Vec3 } from "../../frontend/src/document/types";
 import { isSpace, newItem } from "../../frontend/src/features/kitchen-run-items";
 import { nichePartsIn } from "../../frontend/src/features/niche-parts";
+import { heldAsCabinet, heldWidened, selectedHeld } from "../../frontend/src/app/kitchen/held-drag";
 
 const empty = () => ({ ...createReferencePlate(), features: [] }) as unknown as CadDocument;
 /** A kitchen on one wall, its units made caissons: a drawer unit of 90 and a door unit of 40. */
@@ -46,5 +47,17 @@ describe("caissons en Répartition d'un plan de cuisine", () => {
     // The caisson stays where it was pushed.
     const now = synced.features.find((f): f is SketchFeature => f.id === second)!;
     expect(now.frame!.origin.map((v, k2) => Math.round(v - sk.frame!.origin[k2]!))).toEqual(x.map((v) => Math.round(300 * v)));
+  });
+
+  it("choisi dans la 3D, un caisson a les poignées d'un meuble : sa largeur tirée est celle de sa place, le caisson refait", () => {
+    const { doc, plan } = kitchen();
+    const second = kitchenPlanIn(doc, plan)!.runs!.A!.find((i) => i.id === "u2")!.furnished!;
+    const board = doc.features.find((f) => f.type === "extrude" && f.sketch === second)!.id;
+    const held = selectedHeld(doc, [board])!;
+    expect([held.item, held.width, heldAsCabinet(held).rotation]).toEqual(["u2", 400, 0]);
+    const wide = heldWidened(doc, held, 500);
+    if (typeof wide === "string") throw new Error(wide);
+    expect(kitchenPlanIn(wide, plan)!.runs!.A!.find((i) => i.id === "u2")!.width).toBe(500);
+    expect(heldWidened(doc, held, 100)).toMatch(/de 15 à 240 cm/);
   });
 });
