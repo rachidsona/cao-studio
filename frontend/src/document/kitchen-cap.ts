@@ -110,33 +110,32 @@ export function kitchenCap(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, 
   }
 }
 
+/** One caisson of a casquette in caissons: its key (`capSkip`), its name, along the run, how deep, from where up, its folding door. */
+export interface CapUnit { key: string; name: string; u: number; w: number; d: number; z: number; fold: boolean; over: string }
+
 /**
- * The casquette in caissons: over each wall unit and each arm of a wall corner unit (not the hood, a filler; not a
- * column: it rises to their top itself), a caisson of its width, 58 cm deep unless set (`capDepth`), its lift-up door —
- * the corner's too, on the run that passes, its door lifting in two folding leaves: on the other run, the caissons
- * start beyond its door;
- * with a gap (`capGap`), set on a finishing panel that thick, as wide as it, out to the face of its door — taken from its
- * height: its top stays where it was (under a ceiling it just fits under, the columns as high as before).
+ * Where the caissons of a casquette in caissons stand over a run (`ceiling`: none where it is too low, said in `notes`),
+ * those taken away (`capSkip`) left out.
  */
-function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: boolean, ceiling: number, notes: string[], band: Band, box: BoxOf, cabinet?: CabinetOf): void {
-  if (!cabinet) return;
-  const [h, gap] = [p.capHeight ?? CAP.unit, p.capGap ?? 0];
+export function capUnitSpans(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: boolean, ceiling = Infinity, notes: string[] = []): CapUnit[] {
+  const h = p.capHeight ?? CAP.unit;
   const deep = p.capDepth ?? CAP.unitDepth;
   const L = run.length;
+  const skip = new Set(p.capSkip ?? []);
   // Against the run that passes in a corner up there: its corner caisson, as deep as the others, takes the room before
   // its door; this run's caissons start beyond it.
   const taken = (["left", "right"] as const).filter((side) => run[side] === "stop" && wallRow && wallCornerSide(p, run, side)).map((side): [number, number] => (side === "left" ? [-Infinity, deep + FRONT] : [L - deep - FRONT, Infinity]));
-  /** The caisson over `u`…`u + w` from `z`, `d` deep (out of the room a corner caisson takes): on its finishing panel when there is a gap. */
-  const put = (name: string, u0: number, w0: number, d: number, z: number, fold = false) => {
+  const out: CapUnit[] = [];
+  /** The caisson over `u0`…`u0 + w0` (out of the room a corner caisson takes), unless taken away. */
+  const put = (key: string, name: string, u0: number, w0: number, d: number, z: number, over: string, fold = false) => {
     let [u, end] = [u0, u0 + w0];
     for (const [a, b] of taken) {
       if (a < 0 && u < b) u = Math.min(end, b);
       if (b > L && end > a) end = Math.max(u, a);
     }
-    const w = end - u;
-    if (w < 100) return;
-    if (gap > 0) box(`Panneau sous ${name}`, "panel", band(u, u + w, 0, d + FRONT, z, z + gap));
-    cabinet(name, u, w, d, z + gap, h - gap, { plinth: 0, shelves: 0, layout: "door", side: "top", ...(fold ? { fold: true } : {}) });
+    if (end - u < 100 || skip.has(`${run.id}:${key}`)) return;
+    if (z + h > ceiling + 0.5) return void notes.push(`Casquette ${run.id} : ${Math.round(ceiling - z)} mm entre ${over} et le plafond, moins que les ${h} mm d'un caisson — pas de caisson là.`);
+    out.push({ key: `${run.id}:${key}`, name, u, w: end - u, d, z, fold, over });
   };
   let n = 0;
   // Up in the corners: over the wall corner unit's arm along this run (the run that passes carries the corner itself).
@@ -145,22 +144,32 @@ function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: 
   const top = kitchenSizes(p).wallTop;
   for (const side of ["left", "right"] as const) {
     const arm = wallRow ? wallCornerSide(p, run, side)?.cabinet : null;
-    if (!arm) continue;
-    if (top + h > ceiling + 0.5) {
-      notes.push(`Casquette ${run.id} : ${Math.round(ceiling - top)} mm entre le meuble haut d'angle et le plafond, moins que les ${h} mm d'un caisson — pas de caisson là.`);
-      continue;
-    }
-    put(`Casquette d'angle ${Math.round(arm[1] - arm[0])} (${run.id}${side === "right" ? " droite" : ""})`, arm[0], arm[1] - arm[0], deep, top, true);
+    if (arm) put(`angle-${side}`, `Casquette d'angle ${Math.round(arm[1] - arm[0])} (${run.id}${side === "right" ? " droite" : ""})`, arm[0], arm[1] - arm[0], deep, top, "le meuble haut d'angle", true);
   }
   for (const pl of fill.placed) {
     if (pl.row !== "wall" || applianceOf(pl.item)?.role === "hood" || isFiller(pl.item) || pl.entry.round) continue;
     const size = itemSize(p, pl.item, pl.entry);
-    const z = size.z + size.height;
-    if (z + h > ceiling + 0.5) {
-      notes.push(`Casquette ${run.id} : ${Math.round(ceiling - z)} mm entre ${pl.entry.name} ${pl.item.width} et le plafond, moins que les ${h} mm d'un caisson — pas de caisson là.`);
-      continue;
-    }
-    put(`Casquette ${pl.item.width} (${run.id}${++n})`, pl.at, pl.item.width, deep, z);
+    put(pl.item.id, `Casquette ${pl.item.width} (${run.id}${++n})`, pl.at, pl.item.width, deep, size.z + size.height, `${pl.entry.name} ${pl.item.width}`);
+  }
+  return out;
+}
+
+/**
+ * The casquette in caissons: over each wall unit and each arm of a wall corner unit (not the hood, a filler; not a
+ * column: it rises to their top itself), a caisson of its width, 58 cm deep unless set (`capDepth`), its lift-up door —
+ * the corner's too, on the run that passes, its door lifting in two folding leaves: on the other run, the caissons
+ * start beyond its door;
+ * with a gap (`capGap`), set on a finishing panel that thick, as wide as it, out to the face of its door — taken from its
+ * height: its top stays where it was (under a ceiling it just fits under, the columns as high as before). One taken
+ * away on the strip (`capSkip`) is not made again.
+ */
+function capUnits(p: KitchenFloorPlan, run: KitchenRun, fill: RunFill, wallRow: boolean, ceiling: number, notes: string[], band: Band, box: BoxOf, cabinet?: CabinetOf): void {
+  if (!cabinet) return;
+  const [h, gap] = [p.capHeight ?? CAP.unit, p.capGap ?? 0];
+  // Each on its finishing panel when there is a gap.
+  for (const c of capUnitSpans(p, run, fill, wallRow, ceiling, notes)) {
+    if (gap > 0) box(`Panneau sous ${c.name}`, "panel", band(c.u, c.u + c.w, 0, c.d + FRONT, c.z, c.z + gap));
+    cabinet(c.name, c.u, c.w, c.d, c.z + gap, h - gap, { plinth: 0, shelves: 0, layout: "door", side: "top", ...(c.fold ? { fold: true } : {}) });
   }
 }
 

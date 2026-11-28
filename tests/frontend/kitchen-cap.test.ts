@@ -154,6 +154,15 @@ describe("casquette en caissons à porte relevante (sur-meubles)", () => {
     expect(capProblem({ ...p, capGap: 80 })).toMatch(/0 à 5 cm/);
   });
 
+  it("un caisson ôté sur la bande n'est plus fait ; les autres restent ; remis, il revient", () => {
+    const p = plan([WALL, ["wall-haut-1-porte", 400]], { cap: "units" });
+    const items = p.runs!.A!;
+    expect(units(p).map((u) => u.width)).toEqual([600, 400]);
+    const gone = { ...p, capSkip: [`A:${items[0]!.id}`] };
+    expect(units(gone).map((u) => u.width)).toEqual([400]);
+    expect(units({ ...gone, capSkip: [] }).map((u) => u.width)).toEqual([600, 400]);
+  });
+
   it("leur hauteur choisie, de 25 à 60 cm ; sous un plafond trop bas, pas de caisson et un mot", () => {
     expect(units(plan([WALL], { cap: "units", capHeight: 300 }))[0]!.height).toBe(300);
     expect(kitchenPlanProblem(plan([WALL], { cap: "units", capHeight: 100 }))).toMatch(/25 à 60 cm/);

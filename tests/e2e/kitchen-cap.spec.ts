@@ -26,7 +26,7 @@ test("plan de cuisine : une casquette en caisson sur les meubles hauts", async (
   expect(errors).toEqual([]);
 });
 
-test("plan de cuisine : la casquette en caissons à porte relevante, un caisson sur chaque meuble haut, sur un panneau de finition", async ({ page }) => {
+test("plan de cuisine : la casquette en caissons à porte relevante, un caisson sur chaque meuble haut, sur un panneau de finition ; un caisson ôté sur la bande", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "zz-test-casquette-caissons");
@@ -49,6 +49,19 @@ test("plan de cuisine : la casquette en caissons à porte relevante, un caisson 
   await expect(page.locator('[title^="Casquette"]').first()).toBeAttached({ timeout: 60_000 });
   await expect(page.locator('[title^="Bandeau de casquette"]')).toHaveCount(0);
   await expect(page.locator('[title^="Panneau sous Casquette"]').first()).toBeAttached();
+  // On the strip of its run: each caisson drawn over its wall unit; one chosen, taken away, then all put back.
+  await tool.locator('[data-open-run="A"]').click();
+  const strip = tool.locator('[data-run-strip="A"]');
+  const caps = strip.locator("[data-cap-unit]");
+  const count = await caps.count();
+  expect(count).toBeGreaterThan(0);
+  await caps.first().dispatchEvent("click");
+  const bar = tool.locator("[data-strip-actions]");
+  await expect(bar).toContainText(/^Casquette /);
+  await bar.getByRole("button", { name: "Ôter ce caisson" }).click();
+  await expect(strip.locator("[data-cap-unit]")).toHaveCount(count - 1, { timeout: 60_000 });
+  await bar.getByRole("button", { name: "Remettre les caissons de casquette" }).click();
+  await expect(strip.locator("[data-cap-unit]")).toHaveCount(count, { timeout: 60_000 });
   expect(errors).toEqual([]);
 });
 

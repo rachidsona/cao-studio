@@ -112,6 +112,14 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
     const { side, row } = host.other;
     label = `Angle ${side === "left" ? "de gauche" : "de droite"}${row === "wall" ? ", en haut" : ""} : réglé sous « Meuble choisi »`;
     buttons = [button(row === "wall" ? "Supprimer le haut d'angle" : "Supprimer le meuble d'angle", "data-strip-remove", row === "wall" ? "Plus rien en haut dans cet angle (Suppr) ; il se remet sous « Meuble choisi »" : "Un angle mort à la place, fermé par deux fileurs (Suppr) ; il se remet sous « Meuble choisi »", () => host.removeCorner(side, row))];
+  } else if (host.other?.kind === "capUnit") {
+    const key = host.other.key;
+    // Taken away already (the strip drawn again): put back with the others.
+    const gone = !!host.cap.skip?.includes(key);
+    label = gone ? `${host.other.name} : ôté` : host.other.name;
+    buttons = gone
+      ? [button("Remettre les caissons de casquette", "data-strip-cap-units-on", "Les caissons de casquette ôtés reviennent, dans toute la cuisine", () => host.setCap({ capSkip: undefined }))]
+      : [button("Ôter ce caisson", "data-strip-remove", "Plus de caisson de casquette sur ce meuble (Suppr) ; « Remettre les caissons de casquette » les remet tous", () => host.setCap({ capSkip: [...(host.cap.skip ?? []), key] }))];
   } else if (host.other?.kind === "cap") {
     label = "Casquette des meubles hauts (toute la cuisine)";
     buttons = capRows(host);
@@ -139,7 +147,7 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
     ];
   } else {
     label = "Cliquez un meuble, un appareil, le plan de travail ou la plinthe : Suppr le supprime, Ctrl + D le duplique, ← → le déplacent.";
-    buttons = [...(empty.length ? [button(`Resserrer les meubles (${empty.length} place${empty.length > 1 ? "s" : ""} vide${empty.length > 1 ? "s" : ""})`, "data-strip-close-up", "Ôte les places gardées vides : les meubles se rapprochent. Pour n'en refermer qu'une, glissez un voisin dedans, ou « Place libre » › « Supprimer ».", () => host.change(items.filter((i) => !empty.includes(i)), null, []))] : []), ...(host.worktopOff ? [button("Remettre le plan de travail", "data-strip-worktop-on", "Ce linéaire a de nouveau son plan de travail", () => host.setWorktop(true))] : []), ...(host.kick.on ? [] : [button("Remettre la plinthe", "data-strip-kick-on", "Ce linéaire a de nouveau sa plinthe", () => host.setKick({ on: true }))])];
+    buttons = [...(empty.length ? [button(`Resserrer les meubles (${empty.length} place${empty.length > 1 ? "s" : ""} vide${empty.length > 1 ? "s" : ""})`, "data-strip-close-up", "Ôte les places gardées vides : les meubles se rapprochent. Pour n'en refermer qu'une, glissez un voisin dedans, ou « Place libre » › « Supprimer ».", () => host.change(items.filter((i) => !empty.includes(i)), null, []))] : []), ...(host.worktopOff ? [button("Remettre le plan de travail", "data-strip-worktop-on", "Ce linéaire a de nouveau son plan de travail", () => host.setWorktop(true))] : []), ...(host.kick.on ? [] : [button("Remettre la plinthe", "data-strip-kick-on", "Ce linéaire a de nouveau sa plinthe", () => host.setKick({ on: true }))]), ...(host.cap.kind === "units" && host.cap.skip?.length ? [button("Remettre les caissons de casquette", "data-strip-cap-units-on", "Les caissons de casquette ôtés reviennent, dans toute la cuisine", () => host.setCap({ capSkip: undefined }))] : [])];
   }
   const chosen = !!appliance || (!!host.other && host.other.kind !== "appliance") || ids.length > 0;
   // Its name on a line of its own, whole; what one does of it under it.
@@ -156,6 +164,7 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
         else if (host.other?.kind === "corner") host.removeCorner(host.other.side, host.other.row);
         else if (host.other?.kind === "worktop") host.setWorktop(false);
         else if (host.other?.kind === "cap") host.setCap({ cap: undefined });
+        else if (host.other?.kind === "capUnit" && !host.cap.skip?.includes(host.other.key)) host.setCap({ capSkip: [...(host.cap.skip ?? []), host.other.key] });
         else if (host.other?.kind === "kick") host.setKick({ on: false });
         else if (ids.length) remove(ids);
         else return;

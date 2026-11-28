@@ -2812,7 +2812,9 @@ opération existante.
     tient plus étant omis), de la « Hauteur des caissons » choisie (35 cm d'habitude, de 25 à 60), sa porte se levant — celle du caisson d'angle
     en deux volets, **relevante pliante** (`fold` des façades : « Volet haut » et « Volet bas », le bas plié contre le haut
     en montant, son bord bas le long de la façade, une poignée sur le volet bas, une ferrure de porte relevante pliante au
-    devis) ; sous un
+    devis) ; sur la bande, chaque caisson est dessiné au-dessus de son meuble haut : un clic le choisit, « Ôter ce caisson »
+    (ou Suppr) l'enlève de ce meuble seul (`capSkip` du plan, `capUnitSpans`), « Remettre les caissons de casquette » les
+    remet tous ; sous un
     plafond trop bas, pas de caisson là et un mot (`capUnits`). Un « Panneau entre hauts et caissons » (0 : aucun ; 1,8 cm
     pour un panneau de finition, jusqu'à 5) se pose sous chaque caisson, de sa largeur, du mur au nu de sa porte, pris sur
     sa hauteur : le haut des caissons et des colonnes ne bouge pas ; sur la bande, ce panneau choisit la casquette, son

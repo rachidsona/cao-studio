@@ -20,7 +20,7 @@ import { kitchenPlanIn, withKitchenBuilt } from "../../document/kitchen-floor";
 import type { DisplayUnit } from "../../document/types";
 
 /** The plan's casquette as the strip shows it: its kind, its height and its depth off the wall (mm), the display unit. */
-export type CapState = { kind: KitchenFloorPlan["cap"]; height?: number; depth?: number; gap?: number; unit: DisplayUnit };
+export type CapState = { kind: KitchenFloorPlan["cap"]; height?: number; depth?: number; gap?: number; skip?: string[]; unit: DisplayUnit };
 import { isolateSketch } from "../zone-view";
 import type { KitchenFloorPlan } from "../../document/types";
 import { furnishCabinet } from "../cabinet-furnish";
@@ -107,7 +107,7 @@ export function caissonActions(editor: Editor, heldBy: (id: string) => string | 
   const plan = planId ? kitchenPlanIn(editor.doc, planId) : undefined;
   return {
     // The plan's casquette (one for the whole kitchen), chosen on the strip: what it is, changed or taken away.
-    cap: { kind: plan?.cap, height: plan?.capHeight, depth: plan?.capDepth, gap: plan?.capGap, unit: editor.unit },
+    cap: { kind: plan?.cap, height: plan?.capHeight, depth: plan?.capDepth, gap: plan?.capGap, skip: plan?.capSkip, unit: editor.unit },
     setCap(patch) {
       if (!planId) return;
       if (busy()) return editor.notify("La cuisine est refaite dans un instant : recommencez ensuite.", "info");

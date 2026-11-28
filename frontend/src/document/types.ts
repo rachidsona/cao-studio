@@ -259,6 +259,8 @@ export interface KitchenFloorPlan {
   capDepth?: number;
   /** Caissons with lift-up doors (« units »): the finishing panel between the wall units and them, its thickness (mm); missing or 0: none. */
   capGap?: number;
+  /** Caissons with lift-up doors (« units »): those taken away on the strip, « run:item » (« run:angle-left » over a corner). */
+  capSkip?: string[];
   capOverhang?: number;
   /** The walls it draws behind its runs (no surveyed room) left out: « Murs de la pièce » unticked (document/kitchen-walls.ts). */
   noWalls?: boolean;

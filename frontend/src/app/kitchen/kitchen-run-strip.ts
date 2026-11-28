@@ -7,8 +7,9 @@
  * meuble au-delà d'un voisin le change de place dans sa rangée, le lâcher dans la place vide à côté de lui l'y pose ; le clavier (Suppr, Ctrl + D, les flèches) et le clic droit agissent sur
  * ce qui est choisi (kitchen-strip-actions.ts).
  */
+import { capUnitSpans } from "../../document/kitchen-cap";
 import { cornerSide, wallCornerSide } from "../../document/kitchen-corners";
-import { FRONT, kitchenSizes, runAt, zoneSpan, type KitchenRun, type RunGeometry } from "../../document/kitchen-plan-shapes";
+import { CAP, FRONT, kitchenSizes, runAt, zoneSpan, type KitchenRun, type RunGeometry } from "../../document/kitchen-plan-shapes";
 import type { HandAppliance } from "../../document/kitchen-hand-appliances";
 import { slideRoom } from "../../document/kitchen-slide";
 import type { KitchenFloorPlan, Vec3 } from "../../document/types";
@@ -93,7 +94,7 @@ export interface StripHost {
 }
 
 /** What else than a unit is chosen on the strip; a caisson furnished by hand by the item that keeps its room. */
-export type StripOther = { kind: "appliance"; id: string } | { kind: "worktop" } | { kind: "cap" } | { kind: "kick" } | { kind: "caisson"; id: string } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall" };
+export type StripOther = { kind: "appliance"; id: string } | { kind: "worktop" } | { kind: "cap" } | { kind: "capUnit"; key: string; name: string } | { kind: "kick" } | { kind: "caisson"; id: string } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall" };
 
 export type StripEdit = { kind: "item"; id: string; width: number } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall"; width: number };
 
@@ -212,6 +213,16 @@ export function runStrip(host: StripHost): SVGSVGElement {
     `${rect(a, y(z1), b - a, z1 - z0, "fill-sky-50/60 stroke-sky-500 dark:fill-sky-950/40", `stroke-dasharray="6 4" data-free="${row}"`)}${empty(a, z0, b - a, z1 - z0, "free")}<text x="${(a + b) / 2}" y="${y((z0 + z1) / 2) + 30}" text-anchor="middle" font-size="90" class="fill-sky-700 dark:fill-sky-300" pointer-events="none">${Number(((b - a) / 10).toFixed(1)).toLocaleString("fr-FR")}</text>`;
   for (const [a, b] of openRoom(fill, "base")) parts.push(open(a, b, 0, s.base, "base"));
   for (const [a, b] of openRoom(fill, "wall")) parts.push(open(a, b, s.wallBottom, s.wallTop, "wall"));
+  // The caissons of a casquette in caissons, over the wall units: clicked, chosen (to take one away).
+  if (p.cap === "units") {
+    const gap = p.capGap ?? 0;
+    const h = (p.capHeight ?? CAP.unit) - gap;
+    // Over the caissons furnished by hand too, as the units they were (as the 3D has them).
+    for (const c of capUnitSpans(p, run, { ...fill, placed: [...fill.placed, ...heldUnits(fill)] }, g.wall !== null)) {
+      const on = host.other?.kind === "capUnit" && host.other.key === c.key;
+      parts.push(`${rect(c.u, y(c.z + gap + h), c.w, h, `${PANEL}${host.pickOther ? " cursor-pointer" : ""}`, `data-cap-unit="${escapeHtml(c.key)}" data-cap-name="${escapeHtml(c.name)}"${on ? ` stroke="${BRASS}" stroke-width="3"` : ""}`).replace("/>", `><title>${escapeHtml(c.name)} : cliquer pour le choisir (Suppr l'ôte)</title></rect>`)}<line x1="${c.u + c.w / 2 - 60}" y1="${y(c.z + gap + 50)}" x2="${c.u + c.w / 2 + 60}" y2="${y(c.z + gap + 50)}" stroke="${BRASS}" stroke-width="3" vector-effect="non-scaling-stroke" pointer-events="none"/>`);
+    }
+  }
   // A caisson furnished by hand in a room the plan keeps for it: it stands there, drawn as a unit.
   for (const pl of fill.spaces.filter((q) => q.item.furnished)) {
     const [z0, z1] = pl.row === "wall" ? [s.wallBottom, s.wallTop] : [s.plinth, s.base];
@@ -298,6 +309,7 @@ export function runStrip(host: StripHost): SVGSVGElement {
   }
   for (const top of node.querySelectorAll<SVGElement>("[data-worktop]")) top.addEventListener("click", () => host.pickOther?.({ kind: "worktop" }));
   for (const cap of node.querySelectorAll<SVGElement>("[data-cap-strip]")) cap.addEventListener("click", () => host.pickOther?.({ kind: "cap" }));
+  for (const unit of node.querySelectorAll<SVGElement>("[data-cap-unit]")) unit.addEventListener("click", () => host.pickOther?.({ kind: "capUnit", key: unit.dataset.capUnit!, name: unit.dataset.capName! }));
   // A caisson furnished by hand: clicked, chosen; dragged, moved as a unit is.
   for (const held of node.querySelectorAll<SVGGElement>("[data-held]")) {
     const pl = fill.spaces.find((q) => q.item.id === held.getAttribute("data-held"))!;
