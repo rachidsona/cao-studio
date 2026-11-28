@@ -8,7 +8,7 @@
  */
 import type { RunGeometry } from "../document/kitchen-plan-shapes";
 import type { KitchenRunItem } from "../document/types";
-import { fillRun, isSpace, itemEntry, newItem, rowOf, SPACE_WALL, type Placed } from "./kitchen-run-items";
+import { fillRun, heldUnits, isSpace, itemEntry, newItem, rowOf, SPACE_WALL, type Placed } from "./kitchen-run-items";
 
 type Heights = { worktop: number; wallBottom: number; wallTop: number };
 const NEAR = 0.5;
@@ -41,7 +41,7 @@ export function alignedOver(g: RunGeometry, items: readonly KitchenRunItem[], he
   const fill = fillRun(g, items, heights);
   const unit = fill.placed.find((pl) => pl.item.id === id);
   if (!unit || unit.row !== "wall") return "Choisissez un meuble haut à aligner sur le meuble du dessous.";
-  const base = fill.placed.filter((pl) => pl.row === "base" && pl.entry.kind !== "tall");
+  const base = [...fill.placed, ...heldUnits(fill)].filter((pl) => pl.row === "base" && pl.entry.kind !== "tall");
   if (!base.length) return "Il n'y a pas de meuble bas sous lui sur ce linéaire.";
   // Under it: the base unit it stands over the most, then the others, the nearest first — for when it cannot be set
   // over the first (a wall unit beside it in the way).

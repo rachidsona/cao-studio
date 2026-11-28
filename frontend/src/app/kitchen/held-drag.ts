@@ -5,6 +5,9 @@
  * elle, son intérieur adapté (document/caisson-follow.ts).
  */
 import { kitchenPlanIn, withKitchenBuilt } from "../../document/kitchen-floor";
+import { kitchenFromPlan } from "../../document/kitchen-plan-build";
+import { kitchenRoomInfo } from "../../document/kitchen-plan-room";
+import { absorbed, pushedOut } from "../../features/kitchen-run-absorb";
 import { bodyOrigin, findFeature, updateFeature } from "../../document/operations";
 import { featureOfBody, type CabinetFeature, type CadDocument, type SketchFeature, type Vec3 } from "../../document/types";
 
@@ -57,6 +60,10 @@ export function heldWidened(doc: CadDocument, held: Held, width: number): CadDoc
   const plan = kitchenPlanIn(doc, held.plan);
   const items = plan?.runs?.[held.run];
   if (!items) return "Ce caisson n'est plus sur son linéaire.";
-  const built = withKitchenBuilt(doc, held.plan, { runs: { ...plan!.runs, [held.run]: items.map((i) => (i.id === held.item ? { ...i, width: Math.round(width * 10) / 10 } : i)) } });
+  // The room kept free after it takes the difference, what stands after stays; nothing is pushed out of the run.
+  const fill = (list: readonly typeof items[number][]) => kitchenFromPlan({ ...plan!, runs: { ...plan!.runs, [held.run]: [...list] } }, kitchenRoomInfo(doc, plan!)).fills[held.run]!;
+  const next = absorbed(items, items.map((i) => (i.id === held.item ? { ...i, width: Math.round(width * 10) / 10 } : i)), fill);
+  if (pushedOut(fill(items), fill(next)).length || fill(next).missing.some((i) => i.id === held.item)) return `Pas de place pour l'élargir à ${Math.round(width) / 10} cm : un autre meuble sortirait du linéaire. Faites d'abord de la place après lui.`;
+  const built = withKitchenBuilt(doc, held.plan, { runs: { ...plan!.runs, [held.run]: next } });
   return typeof built === "string" ? built : built.doc;
 }

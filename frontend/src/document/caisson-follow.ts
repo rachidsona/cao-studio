@@ -15,7 +15,7 @@ import type { KitchenUnit } from "../features/kitchen-layout";
 import { heldTall } from "../features/kitchen-run-items";
 import { nichePartsIn } from "../features/niche-parts";
 import { placePoint } from "../features/room-runs";
-import { nearestPlane } from "../sketcher/frame";
+import { frameOf, nearestPlane } from "../sketcher/frame";
 import { extrusionGroups, isPartition, rebuildChain } from "../sketcher/partition-history";
 
 /**
@@ -31,6 +31,14 @@ export function panelsFrame(c: { origin: Vec3; rotation?: number }, set: number)
 const near = (a: Vec3, b: Vec3, tolerance = 1e-6) => a.every((v, i) => Math.abs(v - b[i]!) < tolerance);
 const sameFrame = (a: PlaneFrame, b: PlaneFrame) => near(a.origin, b.origin) && near(a.xDir, b.xDir) && near(a.normal, b.normal);
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+/**
+ * Where a caisson's sketch stands: its frame, moved inside its plane by its `shift` — what « Déplacer », « Coller par
+ * face », « Pousser » and « Aligner » write when they move a Répartition (sketcher/move.ts), its frame's origin kept.
+ */
+export const standing = (s: SketchFeature): PlaneFrame => ({ ...s.frame!, origin: frameOf(s).origin });
+/** The sketch put on this frame, its `shift` gone into it. */
+const onFrame = <T extends SketchFeature>(s: T, frame: PlaneFrame): T => (({ shift: _gone, ...rest }) => ({ ...rest, frame, plane: nearestPlane(frame.normal) }) as T)(s);
 
 type Partition = OffsetRecord & { step: Extract<NonNullable<OffsetRecord["step"]>, { kind: "partition" }> };
 /** The Répartition a caisson's sketch is made of: the first one extruded. */
@@ -49,12 +57,13 @@ export function runFeatures(doc: CadDocument, plan: KitchenFloorPlan, run: strin
 }
 
 /** A room of the plan where the plan stands in the room, as its cabinets are (kitchen-plan.ts). */
-const placed = (plan: KitchenFloorPlan, u: KitchenUnit) => (plan.place ? { origin: placePoint(plan.place, u.origin), rotation: (u.rotation + plan.place.quarter * 90) % 360 } : u);
+export const placed = (plan: KitchenFloorPlan, u: KitchenUnit) => (plan.place ? { origin: placePoint(plan.place, u.origin), rotation: (u.rotation + plan.place.quarter * 90) % 360 } : u);
 
 /**
- * The caissons furnished in rooms kept free that were pushed along their run in the 3D since `prev` (item id → mm
- * towards the run's end, from where the plan puts them): their rooms are to go there (kitchen-slide.ts). Turned, or
- * moved off their wall: not.
+ * The caissons furnished in rooms kept free that were moved in the 3D since `prev` (item id → mm towards the run's
+ * end, from where the plan puts them): their rooms are to go there (kitchen-slide.ts). Turned, or moved off their
+ * wall: by what they went along it only (0: not along it) — the kitchen made again, they go back to their rooms, as
+ * a cabinet of the plan does.
  */
 export function caissonsMoved(prev: CadDocument, doc: CadDocument, plan: KitchenFloorPlan, kept: readonly KitchenUnit[]): Record<string, number> {
   const moved: Record<string, number> = {};
@@ -62,12 +71,13 @@ export function caissonsMoved(prev: CadDocument, doc: CadDocument, plan: Kitchen
     const item = u.run ? plan.runs?.[u.run]?.find((i) => i.id === u.item) : undefined;
     const [was, now] = [item?.furnished ? findFeature(prev, item.furnished) : undefined, item?.furnished ? findFeature(doc, item.furnished) : undefined];
     const record = now?.type === "sketch" ? partitionOf(now) : undefined;
-    if (was?.type !== "sketch" || now?.type !== "sketch" || !was.frame || !now.frame || !record || sameFrame(was.frame, now.frame)) continue;
+    if (was?.type !== "sketch" || now?.type !== "sketch" || !was.frame || !now.frame || !record || sameFrame(standing(was), standing(now))) continue;
     const there = panelsFrame(placed(plan, u), record.step.depth!);
-    if (sameFrame(there, now.frame) || !near(there.normal, now.frame.normal, 1e-3)) continue;
-    const delta = [0, 1, 2].map((k) => now.frame!.origin[k]! - there.origin[k]!) as Vec3;
+    const at = standing(now);
+    if (sameFrame(there, at)) continue;
+    const delta = [0, 1, 2].map((k) => at.origin[k]! - there.origin[k]!) as Vec3;
     const d = dot(delta, there.xDir);
-    if (Math.abs(d) >= 1 && [0, 1, 2].every((k) => Math.abs(delta[k]! - d * there.xDir[k]!) < 1)) moved[u.item!] = Math.round(d * 10) / 10;
+    moved[u.item!] = Math.abs(d) >= 1 ? Math.round(d * 10) / 10 : 0;
   }
   return moved;
 }
@@ -80,7 +90,7 @@ function withCaissonResized(doc: CadDocument, sketch: SketchFeature, frame: Plan
       const { widths: shares, ...input } = r.step.input;
       return { ...r, step: { ...r.step, input: { ...input, length: width, ...(height ? { height } : {}), ...(widths && shares ? { widths: shares } : {}) } } } as OffsetRecord;
     });
-    const moved: SketchFeature = { ...sketch, frame, plane: nearestPlane(frame.normal), offsets };
+    const moved: SketchFeature = { ...onFrame(sketch, frame), offsets };
     return { moved, offsets, rebuilt: rebuildChain(moved, partitionOf(sketch)!.id) };
   };
   // Cases of a set width that no longer fit: shared again.
@@ -97,7 +107,7 @@ export function withCaissonRemade(doc: CadDocument, sketchId: string): { doc: Ca
   const sketch = findFeature(doc, sketchId);
   const record = sketch?.type === "sketch" ? partitionOf(sketch) : undefined;
   if (sketch?.type !== "sketch" || !sketch.frame || !record) return "Ce caisson n'existe plus.";
-  return withCaissonResized(doc, sketch, sketch.frame, record.step.input.length);
+  return withCaissonResized(doc, sketch, standing(sketch), record.step.input.length);
 }
 
 /**
@@ -119,7 +129,7 @@ export function withCaissonsFollowing(base: CadDocument, plan: KitchenFloorPlan,
     const resized = Math.abs(width - u.width) >= 0.05 || height !== undefined;
     // Made of a unit of the plan when its sides stopped over the plinth: down to the floor now, as its unit's (notched for the plinth: kick-notches.ts).
     const dated = !!item?.from && record.step.input.outer === "board" && record.step.input.plinth > 0;
-    if (!resized && !dated && sameFrame(frame, sketch.frame)) continue;
+    if (!resized && !dated && !sketch.shift && sameFrame(frame, sketch.frame)) continue;
     const before = caissonPose(doc, sketch, width);
     let next: CadDocument;
     if (resized || dated) {
@@ -131,7 +141,7 @@ export function withCaissonsFollowing(base: CadDocument, plan: KitchenFloorPlan,
       }
       problems.push(...made.problems.map((m) => `${sketch.name} : ${m}`));
       next = made.doc;
-    } else next = updateFeature(doc, sketch.id, (f) => (f.type === "sketch" ? { ...f, frame, plane: nearestPlane(frame.normal) } : f));
+    } else next = updateFeature(doc, sketch.id, (f) => (f.type === "sketch" ? onFrame(f, frame) : f));
     doc = withTrimsFollowing(doc, next, before, caissonPose(next, findFeature(next, sketch.id) as SketchFeature, u.width));
   }
   return { doc, problems };
@@ -155,7 +165,7 @@ export function withRoomsLinked(doc: CadDocument, old: KitchenFloorPlan, kept: r
     const k = caissons.findIndex((s) => {
       const step = partitionOf(s)!.step;
       if (step.kind !== "partition" || Math.abs(step.input.length - u.width) >= 0.5 || !near(s.frame!.xDir, at.xDir) || !near(s.frame!.normal, at.normal)) return false;
-      const d = s.frame!.origin.map((v, i) => v - at.origin[i]!) as Vec3;
+      const d = standing(s).origin.map((v, i) => v - at.origin[i]!) as Vec3;
       // Just there: at its left, its bottom, its front a little in or out of the room's.
       return Math.abs(dot(d, at.xDir)) < 1 && (wall || Math.abs(d[2]) < 1) && Math.abs(dot(d, at.normal) + step.depth!) < 400;
     });
@@ -164,7 +174,7 @@ export function withRoomsLinked(doc: CadDocument, old: KitchenFloorPlan, kept: r
     const step = partitionOf(s)!.step;
     if (step.kind !== "partition") continue;
     // Its front where the room's is: the room as deep as from the wall to it.
-    const d = s.frame!.origin.map((v, i) => v - at.origin[i]!) as Vec3;
+    const d = standing(s).origin.map((v, i) => v - at.origin[i]!) as Vec3;
     found.set(u.item!, { furnished: s.id, depth: u.depth + dot(d, at.normal) + step.depth!, ...(wall ? { height: u.height - d[2] } : {}) });
   }
   if (!found.size) return next;

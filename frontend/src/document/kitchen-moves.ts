@@ -25,7 +25,7 @@ function withRoomBefore(items: KitchenRunItem[], id: string, extra: number, open
   const row = rowOf(itemEntry(items[k]!));
   let j = k - 1;
   while (j >= 0 && rowOf(itemEntry(items[j]!)) !== row) j--;
-  const before = j >= 0 && isSpace(items[j]!) ? items[j]! : null;
+  const before = j >= 0 && isSpace(items[j]!) && !items[j]!.furnished ? items[j]! : null;
   const width = Math.round(((before?.width ?? 0) + extra) * 10) / 10;
   if (width < -STILL) return open ? items.filter((i) => i !== before) : null;
   if (before) return width <= STILL ? items.filter((i) => i !== before) : items.map((i) => (i === before ? { ...i, width } : i));

@@ -29,6 +29,7 @@ import { runStrip, type StripOther } from "./kitchen-run-strip";
 import { editStripWidth } from "./kitchen-strip-edit";
 import { handAppliances } from "../../document/kitchen-hand-appliances";
 import { myUnits } from "./my-units";
+import { absorbed, pushedOut } from "../../features/kitchen-run-absorb";
 import { missingRows, noRoomFor } from "./kitchen-run-missing";
 import { fillerFromGap, fillerRows } from "./kitchen-run-fillers";
 import { caissonActions, furnishItem, insideRows } from "./kitchen-unit-inside";
@@ -125,15 +126,14 @@ export class RunEditor {
   get chosenItem(): string | null { return this.chosen; }
   show(fold: string, item?: string): void { if (item) (this.chosen = item), (this.picked = []), (this.other = null); (this.folds.open = this.folds.reveal = fold), this.host.redraw(); }
 
-  get openFold(): string | null {
-    return this.folds.open;
-  }
+  get openFold(): string | null { return this.folds.open; }
 
-  get otherChosen(): StripOther | null {
-    return this.other;
-  }
+  get otherChosen(): StripOther | null { return this.other; }
 
-  private change(items: KitchenRunItem[], chosen = this.chosen, picked = this.picked): void {
+  private change(given: KitchenRunItem[], chosen = this.chosen, picked = this.picked): void {
+    // Each unit keeps its place: the room kept free after what changed takes the difference, and nothing is pushed out of the run (features/kitchen-run-absorb.ts).
+    const items = absorbed(this.items, given, (i) => this.fillOf(i)), out = pushedOut(this.fillOf(), this.fillOf(items));
+    if (out.length) return (this.host.editor.notify(`Pas de place : ${out.map((i) => (i.furnished ? `le caisson de ${formatLength(i.width, this.host.editor.unit)}` : `« ${itemEntry(i).name} »`)).join(", ")} sortirait du linéaire. Faites d'abord de la place (Place libre), ou choisissez plus étroit.`, "error"), this.host.redraw());
     if (chosen && items.some((i) => i.id === chosen && i.furnished)) [this.other, chosen] = [{ kind: "caisson", id: chosen }, null]; // a caisson furnished by hand, moved
     if (!items.length || !this.items.length) this.rest = restOf({ ...this.host.plan, rest: {} }, this.host.run); // emptied, or its first unit: the rest where the plan puts it of itself (units against the corner), not where an older arrangement left it
     [this.items, this.chosen] = [joinedSpaces(items), chosen];
@@ -234,7 +234,7 @@ export class RunEditor {
       items: this.items, chosen: this.chosen, picked: this.picked, other: this.other, worktopOff: off, appliances,
       change: (items, chosen, picked) => ((this.focusStrip = true), this.change(items, chosen, picked ?? [])),
       putAfter: (copy, after) => {
-        const next = insertItem(this.items, copy, after);
+        const first = absorbed(this.items, insertItem(this.items, copy, after), (i) => this.fillOf(i)), next = noRoomFor(this.fillOf(first), copy, unit, fill) ? (inKeptRoom(this.items, copy) ?? first) : first;
         const why = noRoomFor(this.fillOf(next), copy, unit, fill);
         if (why) return editor.notify(why, "error");
         this.focusStrip = true;
@@ -379,7 +379,7 @@ export class RunEditor {
 
   /** The room kept free where units were pushed in the 3D: each, its width typed or taken out (its units then close up). */
   private spaceRows(): HTMLElement | null {
-    const spaces = this.items.filter(isSpace);
+    const spaces = this.items.filter((i) => isSpace(i) && !i.furnished);
     if (!spaces.length) return null;
     const unit = this.host.editor.unit;
     const rows = spaces.map((item) => {
@@ -452,7 +452,7 @@ export class RunEditor {
       const model = models.find((m) => m.model === swap.value);
       if (model) replace({ model: model.model, width: model.widths.includes(item.width) ? item.width : model.widths.includes(600) ? 600 : model.widths[0]!, own: undefined });
     });
-    const same = this.items.filter((i) => rowOf(itemEntry(i)) === row && !isSpace(i));
+    const same = this.items.filter((i) => rowOf(itemEntry(i)) === row && (!isSpace(i) || !!i.furnished));
     const index = same.indexOf(item);
     const step = (label: string, title: string, to: number) => {
       const b = el("button", { type: "button", class: SMALL, title, disabled: to < 0 || to >= same.length }, label);

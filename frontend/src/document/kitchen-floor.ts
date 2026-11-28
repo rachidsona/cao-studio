@@ -7,6 +7,7 @@
  * caisson aménagé à la main suit sa place (caisson-follow.ts). Pur.
  */
 import { isCaisson, withCaissonsFacing, withCaissonsFollowing, withRoomsLinked } from "./caisson-follow";
+import { withLostCaissonsBack } from "./caisson-lost";
 import { decorateKitchen, layoutPlan } from "./kitchen-plan";
 import { kitchenFromPlan, type KitchenRoomInfo } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
@@ -118,7 +119,9 @@ export function withKitchenBuilt(base: CadDocument, planId: string, patch: Parti
   if (!old) return "Ce plan n'existe plus.";
   // Its rooms kept for caissons furnished before they kept them, linked to them where they stand.
   const unlinked = Object.values(old.runs ?? {}).some((items) => items.some((i) => isSpace(i) && !i.furnished));
-  const plan: KitchenFloorPlan = withFollowing(old, patch, unlinked ? withRoomsLinked(base, old, kitchenFromPlan(old, kitchenRoomInfo(base, old)).kept, { ...old, ...patch }) : { ...old, ...patch });
+  const followed0 = withFollowing(old, patch, unlinked ? withRoomsLinked(base, old, kitchenFromPlan(old, kitchenRoomInfo(base, old)).kept, { ...old, ...patch }) : { ...old, ...patch });
+  // A caisson its run lost the room of (pushed past its end) gets it back where it stands in the 3D, when that place is free (caisson-lost.ts).
+  const plan: KitchenFloorPlan = withLostCaissonsBack(base, followed0, kitchenRoomInfo(base, followed0));
   const madeBefore = Object.values(old.made ?? {}).flat();
   // What each piece made before is, to find it again once made anew (its ids are given out again).
   const before = madeKeys(base, old);

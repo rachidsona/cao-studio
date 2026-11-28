@@ -13,6 +13,7 @@ import { kitchenFromPlan } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
 import { islandMoved, itemsMoved, unitsMoved } from "./kitchen-moves";
 import { caissonsMoved } from "./caisson-follow";
+import { lostCaissons } from "./caisson-lost";
 import { itemSlid } from "./kitchen-slide";
 import { FRONT, kitchenPlanProblem, kitchenRuns, kitchenSizes, runGeometry } from "./kitchen-plan-shapes";
 import { findFeature } from "./operations";
@@ -20,7 +21,8 @@ import { keptOf } from "./kitchen-keep";
 
 const sameKeep = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 import type { CabinetFeature, CadDocument, FrontStyle, FrontsFeature, KitchenRunItem } from "./types";
-import { applianceOf, hasInside, itemEntry, rowOf, sizeLimits } from "../features/kitchen-run-items";
+import { applianceOf, fillRun, hasInside, itemEntry, rowOf, sizeLimits } from "../features/kitchen-run-items";
+import { absorbed } from "../features/kitchen-run-absorb";
 
 const NEAR = 0.05;
 const differs = (a: number, b: number) => Math.abs(a - b) > NEAR;
@@ -49,12 +51,14 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
     const rest = { ...plan.rest };
     // A caisson furnished in a room kept free, pushed along its run in the 3D: its room goes there, the worktop and plinth with it.
     const pushed = caissonsMoved(prev, doc, plan, kept);
+    // A caisson the plan lost the room of, moved in the 3D: the kitchen made again finds it its room where it now stands (caisson-lost.ts).
+    const sought = lostCaissons(plan, room).some(({ item }) => JSON.stringify((findFeature(prev, item.furnished!) as { frame?: unknown } | undefined)?.frame) !== JSON.stringify((findFeature(doc, item.furnished!) as { frame?: unknown } | undefined)?.frame));
     let corners: CornerSetting = { corners: plan.corners, wallCorners: plan.wallCorners, cornerSizes: plan.cornerSizes };
     // The island moved (one of its units, or all the same way): it goes there whole, its units as they were on it —
     // unless the plan cannot have it there (against a wall, on another run).
     const there = islandMoved(doc, plan, units.filter((u) => u.run === "I"), prev);
     const island = there && !kitchenPlanProblem({ ...plan, ...there }) ? there : null;
-    let changed = !!island;
+    let changed = !!island || sought;
     for (const run of kitchenRuns(plan)) {
       const own = units.filter((u) => u.run === run.id);
       const cabinets = (plan.made?.[run.id] ?? []).map((id) => findFeature(doc, id)).filter((f): f is CabinetFeature => f?.type === "cabinet");
@@ -168,8 +172,14 @@ export function syncKitchenPlans(prev: CadDocument, next: CadDocument): CadDocum
         runs[run.id] = items.map((it, j) => (j === k ? next : it));
         changed = true;
       });
+      // A unit made wider or narrower in the 3D: the room kept free after it takes the difference, what stands after it stays (features/kitchen-run-absorb.ts).
+      const sizes = kitchenSizes(plan), geometry = runGeometry(plan, run, room?.[run.id]);
+      if (changed && runs[run.id] && plan.runs?.[run.id]) runs[run.id] = absorbed(plan.runs[run.id]!, runs[run.id]!, (list) => fillRun(geometry, list, { worktop: plan.worktopHeight, wallBottom: sizes.wallBottom, wallTop: sizes.wallTop }));
       for (const [id, by] of Object.entries(pushed)) {
         if (!(runs[run.id] ?? []).some((i) => i.id === id)) continue;
+        // Moved off its room: the kitchen is made again (it goes back to it), its room gone along the wall by what it went.
+        changed = true;
+        if (!by) continue;
         const s = kitchenSizes(plan);
         const slid = itemSlid({ ...plan, runs, rest }, run, room?.[run.id], runs[run.id]!, { worktop: plan.worktopHeight, wallBottom: s.wallBottom, wallTop: s.wallTop }, id, by);
         if (typeof slid === "string") continue;

@@ -60,4 +60,49 @@ describe("caissons en Répartition d'un plan de cuisine", () => {
     expect(kitchenPlanIn(wide, plan)!.runs!.A!.find((i) => i.id === "u2")!.width).toBe(500);
     expect(heldWidened(doc, held, 100)).toMatch(/de 15 à 240 cm/);
   });
+
+  it("sorti de son mur dans la 3D (Coller par face, Déplacer), un caisson revient à sa place, avancé de ce qu'il a fait le long du mur", () => {
+    const { doc, plan } = kitchen();
+    const second = kitchenPlanIn(doc, plan)!.runs!.A!.find((i) => i.id === "u2")!.furnished!;
+    const sk = doc.features.find((f): f is SketchFeature => f.id === second)!;
+    const [x, n] = [sk.frame!.xDir, sk.frame!.normal];
+    // 200 along its wall, and 500 off it.
+    const off = sk.frame!.origin.map((v, k) => v + 200 * x[k]! + 500 * n[k]!) as Vec3;
+    const synced = syncKitchenPlans(doc, { ...doc, features: doc.features.map((f) => (f.id === second ? { ...sk, frame: { ...sk.frame!, origin: off } } : f)) });
+    const now = synced.features.find((f): f is SketchFeature => f.id === second)!;
+    expect(now.frame!.origin.map((v, k) => Math.round(v - sk.frame!.origin[k]!))).toEqual(x.map((v) => Math.round(200 * v)));
+  });
+
+  it("un caisson que le plan avait perdu (poussé au-delà du bout) retrouve sa place là où il est, sans rien bouger", () => {
+    const { doc, plan } = kitchen();
+    const p = kitchenPlanIn(doc, plan)!;
+    const frames = (d: CadDocument) => d.features.filter((f): f is SketchFeature => f.type === "sketch" && !!f.frame && f.id !== plan).map((f) => [f.id, f.frame!.origin.map(Math.round)]);
+    // A room of 2,5 m written before the second caisson: its items no longer hold it on the run, though it stands there.
+    const lost = { ...doc, features: doc.features.map((f) => (f.id === plan && f.type === "sketch" ? { ...f, kitchenPlan: { ...p, runs: { ...p.runs, A: [p.runs!.A![0]!, { id: "kx", model: "space", width: 2500 }, p.runs!.A![1]!] } } } : f)) } as CadDocument;
+    const built = withKitchenBuilt(lost, plan, {});
+    if (typeof built === "string") throw new Error(built);
+    const items = kitchenPlanIn(built.doc, plan)!.runs!.A!;
+    expect(items.filter((i) => i.furnished).map((i) => i.id)).toEqual(["u1", "u2"]);
+    // Right after the first, as it stands: no room kept between them, what was kept after it.
+    expect(items.map((i) => [i.furnished ? i.id : "libre", i.width])).toEqual([["u1", 900], ["u2", 400], ["libre", 2100]]);
+    expect(frames(built.doc)).toEqual(frames(doc));
+  });
+
+  it("déplacé par « Déplacer » ou « Coller par face » (un décalage dans son plan, son repère gardé), le plan le suit de même", () => {
+    const { doc, plan } = kitchen();
+    const second = kitchenPlanIn(doc, plan)!.runs!.A!.find((i) => i.id === "u2")!.furnished!;
+    const sk = doc.features.find((f): f is SketchFeature => f.id === second)!;
+    // 300 along its wall, written as these tools do: in `shift`.
+    const synced = syncKitchenPlans(doc, { ...doc, features: doc.features.map((f) => (f.id === second ? { ...sk, shift: [300, 0] as [number, number] } : f)) });
+    const items = kitchenPlanIn(synced, plan)!.runs!.A!;
+    const k = items.findIndex((i) => i.id === "u2");
+    expect(items[k - 1] && isSpace(items[k - 1]!) && !items[k - 1]!.furnished ? items[k - 1]!.width : 0).toBeCloseTo(300, 0);
+    // Its frame is now there, the shift gone into it: it does not come back at the next rebuild.
+    const now = synced.features.find((f): f is SketchFeature => f.id === second)!;
+    expect(now.shift).toBeUndefined();
+    expect(now.frame!.origin.map((v, i) => Math.round(v - sk.frame!.origin[i]!))).toEqual(sk.frame!.xDir.map((v) => Math.round(300 * v)));
+    const again = withKitchenBuilt(synced, plan, {});
+    if (typeof again === "string") throw new Error(again);
+    expect(again.doc.features.find((f): f is SketchFeature => f.id === second)!.frame).toEqual(now.frame);
+  });
 });

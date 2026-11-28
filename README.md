@@ -2862,6 +2862,14 @@ opération existante.
   - **La bande et la 3D montrent le même meuble** (`app/kitchen/strip-hover.ts`) : survoler un meuble de la bande
     éclaire son caisson et ses façades dans la 3D ; survoler un caisson du linéaire dans la 3D cerne son meuble sur la
     bande.
+  - **Chaque meuble garde sa place** (`features/kitchen-run-absorb.ts`) : un meuble élargi, rétréci, ajouté ou collé avant
+    une place gardée libre prend sa largeur sur elle — elle rétrécit ou grandit d'autant, ce qui est après elle ne bouge
+    pas. **Rien ne sort du linéaire** : un changement qui en ferait sortir un meuble, ou un caisson en Répartition, est
+    refusé avec la raison (un caisson en Répartition compte comme un meuble : il n'est plus perdu en silence).
+  - **Un caisson que le plan avait perdu** (`document/caisson-lost.ts`) retrouve sa place là où il est dans la 3D, à
+    sa largeur réelle, dès que la cuisine est refaite, si cet endroit est libre sur son mur ; sinon « À revoir » le
+    dit. **Sorti de son mur** (Coller par face, Déplacer), un caisson revient à sa place, avancé de ce qu'il a fait le
+    long du mur, comme un meuble du plan.
   - **Les caissons en Répartition aussi** (`app/kitchen/held-drag.ts`) : survol relié, place libre tapée autour du
     caisson choisi, copier-coller (le meuble dont il est fait, à ses cotes, refait en caisson ; pas son aménagement fait à
     la main), « ✥ » et « ↔ » dans la 3D (sa place dans le linéaire glisse ou s'élargit, le caisson refait), « Cacher :

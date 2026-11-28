@@ -55,7 +55,7 @@ export interface StripActionsHost {
  * deleted in the 3D): the others stay where they are, and one decides to close up or not. Room already kept free goes.
  */
 export function withRoomLeft(items: readonly KitchenRunItem[], ids: readonly string[]): KitchenRunItem[] {
-  return items.flatMap((i): KitchenRunItem[] => (!ids.includes(i.id) ? [i] : isSpace(i) ? [] : [{ id: i.id, model: rowOf(itemEntry(i)) === "wall" ? SPACE_WALL : SPACE, width: i.width }]));
+  return items.flatMap((i): KitchenRunItem[] => (!ids.includes(i.id) || i.furnished ? [i] : isSpace(i) ? [] : [{ id: i.id, model: rowOf(itemEntry(i)) === "wall" ? SPACE_WALL : SPACE, width: i.width }]));
 }
 
 /** A unit copied on a strip (Ctrl + C), to be pasted on this run or another (Ctrl + V): as it is, without its place. */

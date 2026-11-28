@@ -6,7 +6,7 @@
 import type { KitchenMark } from "../../document/kitchen-plan-room";
 import { kitchenLines, kitchenRuns, kitchenSizes, runAt, type KitchenRun } from "../../document/kitchen-plan-shapes";
 import type { KitchenFloorPlan } from "../../document/types";
-import type { RunFill } from "../../features/kitchen-run-items";
+import { heldUnits, type RunFill } from "../../features/kitchen-run-items";
 
 const SVG = "http://www.w3.org/2000/svg";
 const MARK: Record<KitchenMark["kind"], string> = { door: "#f97316", window: "#22c55e", socket: "#eab308", beam: "#a855f7" };
@@ -31,11 +31,11 @@ export function kitchenSchema(p: KitchenFloorPlan, labels: ((run: KitchenRun) =>
   const node = svg("svg", { viewBox: `${x0 - pad} ${y0 - pad} ${x1 - x0 + 2 * pad} ${y1 - y0 + 2 * pad}`, class: "max-h-56 w-full", ...(labels ? { role: "img", "aria-label": "Schéma de la cuisine vu de dessus" } : { "aria-hidden": "true" }) });
   const { cabinet } = kitchenSizes(p);
   for (const run of runs) {
-    const filled = (fills[run.id]?.placed.length ?? 0) > 0;
+    const filled = (fills[run.id]?.placed.length ?? 0) + heldUnits(fills[run.id] ?? { spaces: [] }).length > 0;
     const shape = svg("polygon", { points: points(run.zone.outline), fill: run.id === chosen ? "#38bdf888" : filled ? "#38bdf855" : "#38bdf822", ...(pick ? { class: "cursor-pointer hover:fill-sky-400/50", "data-run": run.id } : {}) });
     if (pick) shape.addEventListener("click", () => pick(run));
     node.append(shape);
-    for (const pl of fills[run.id]?.placed ?? []) {
+    for (const pl of [...(fills[run.id]?.placed ?? []), ...heldUnits(fills[run.id] ?? { spaces: [] })]) {
       if (pl.row !== "base") continue;
       const depth = pl.entry.custom && pl.entry.depth ? pl.entry.depth : cabinet;
       const corners = [runAt(run, pl.at, run.back), runAt(run, pl.at + pl.item.width, run.back), runAt(run, pl.at + pl.item.width, run.back + depth), runAt(run, pl.at, run.back + depth)];

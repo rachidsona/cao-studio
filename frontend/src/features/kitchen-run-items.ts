@@ -280,7 +280,7 @@ function pack(stretches: [number, number][], items: Omit<Placed, "at">[], rest: 
     const group = groups[i]!;
     const left = b - a - used[i]!;
     // Columns at the ends of a stretch stay against them: what is left goes between them and the others.
-    const tall = (it: Omit<Placed, "at">) => it.entry.kind === "tall";
+    const tall = (it: Omit<Placed, "at">) => it.entry.kind === "tall" || (isSpace(it.item) && heldTall(it.item));
     let lead = 0;
     while (lead < group.length && tall(group[lead]!)) lead++;
     let trail = group.length;
@@ -396,7 +396,7 @@ export function fillRun(g: RunGeometry, given: readonly KitchenRunItem[], height
   }
   const problems: string[] = [];
   const most = Math.max(0, ...base.gaps.map(([a, b]) => b - a));
-  for (const m of base.missing) problems.push(`${m.entry.name} ${cm(m.item.width)} ne tient pas : ${most >= 1 ? `il reste ${cm(most)} au plus` : "le mur est plein"}.`);
+  for (const m of base.missing) problems.push(`${m.item.furnished ? "Caisson aménagé" : m.entry.name} ${cm(m.item.width)} ne tient pas : ${most >= 1 ? `il reste ${cm(most)} au plus` : "le mur est plein"}.`);
   for (const m of wall.missing) problems.push(g.wall ? `${m.entry.name} ${cm(m.item.width)} ne tient pas en haut.` : g.low ? `${m.entry.name} : le plafond est trop bas pour des meubles hauts.` : `${m.entry.name} : pas de mur derrière pour un meuble haut.`);
   // A filler closes a narrow rest beside what stands — a unit, a caisson furnished by hand, a corner — never between
   // two places kept free, nor at a free end past one: that room is left open.
@@ -414,7 +414,8 @@ export function fillRun(g: RunGeometry, given: readonly KitchenRunItem[], height
   const free = joined([...base.gaps.filter(([a, b]) => b - a > WIDE_FILLER), ...narrow.filter((gap) => !fillers.includes(gap)), ...kept(base.placed)]);
   const wallFree = joined([...wall.gaps.filter(([a, b]) => b - a > WIDE_FILLER), ...kept(wall.placed)]);
   const placed = [...base.placed, ...wall.placed];
-  problems.push(...constraints(placed, g, stretches));
+  // A hob, a sink, a column made a caisson in Répartition is still one: its room, read as its unit.
+  problems.push(...constraints([...placed, ...heldUnits({ spaces: spaced })], g, stretches));
   return { placed, fillers, free, wallFree, walls, stretches, spaces: spaced, items: items as KitchenRunItem[], missing: [...base.missing, ...wall.missing].map((m) => m.item), problems };
 }
 

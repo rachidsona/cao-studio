@@ -10,7 +10,7 @@ import { kitchenFromPlan } from "./kitchen-plan-build";
 import { kitchenRoomInfo } from "./kitchen-plan-room";
 import { kitchenRuns, kitchenSizes, runAt, zoneSpan, type KitchenRun } from "./kitchen-plan-shapes";
 import type { CadDocument, KitchenFloorPlan } from "./types";
-import { applianceOf, type Placed } from "../features/kitchen-run-items";
+import { applianceOf, heldUnits, type Placed } from "../features/kitchen-run-items";
 
 const PAGE: [number, number] = [297, 210];
 const M = 12;
@@ -65,7 +65,7 @@ export function kitchenDossier(doc: CadDocument, title: string, length: (mm: num
   const runs = kitchenRuns(p);
   // Numbered along the runs, the base row first.
   const numbered: { run: KitchenRun; pl: Placed; n: number }[] = [];
-  for (const run of runs) for (const row of ["base", "wall"] as const) for (const pl of (layout.fills[run.id]?.placed ?? []).filter((x) => x.row === row).sort((a, b) => a.at - b.at)) numbered.push({ run, pl, n: numbered.length + 1 });
+  for (const run of runs) for (const row of ["base", "wall"] as const) for (const pl of [...(layout.fills[run.id]?.placed ?? []), ...heldUnits(layout.fills[run.id] ?? { spaces: [] })].filter((x) => x.row === row).sort((a, b) => a.at - b.at)) numbered.push({ run, pl, n: numbered.length + 1 });
   if (!numbered.length) return "Les linéaires sont vides : aménagez-les ou « Proposer une cuisine ».";
   const s = kitchenSizes(p);
   const heightOf = (pl: Placed) => (pl.row === "wall" ? (applianceOf(pl.item)?.role === "hood" ? 100 : (pl.entry.height ?? s.wallTop - s.wallBottom)) : pl.entry.kind === "tall" ? s.wallTop : s.base);
