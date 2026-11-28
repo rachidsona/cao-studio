@@ -132,6 +132,9 @@ describe("casquette en caissons à porte relevante (sur-meubles)", () => {
       expect(boxes.some((a, i) => boxes.some((b, j) => i < j && overlap(a, b)))).toBe(false);
       // The corner's caisson as deep as the others (58 cm), on the run that passes.
       expect(made.filter((u) => u.name.startsWith("Casquette d'angle")).map((u) => u.depth), corner).toEqual([580]);
+      // Its door lifting in two folding leaves; the others a plain lift-up door.
+      expect(made.filter((u) => u.name.startsWith("Casquette d'angle")).map((u) => u.fold), corner).toEqual([true]);
+      expect(made.filter((u) => !u.name.startsWith("Casquette d'angle")).some((u) => u.fold), corner).toBe(false);
     }
   });
 

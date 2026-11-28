@@ -1,6 +1,6 @@
 /** Portes relevables, abattants et façades sans poignée (gorge) : pièces, perçages, compas, ouverture, devis. */
 import { beforeAll, describe, expect, it } from "vitest";
-import { doorSwing } from "../../frontend/src/app/drawer-toggle";
+import { doorSwing, swingPose } from "../../frontend/src/app/drawer-toggle";
 import { bodyAppearance } from "../../frontend/src/appearance/assign";
 import { doorOf, withDoorFlipped } from "../../frontend/src/document/door-edit";
 import { frontMass, isHardwareBody, modelHardware } from "../../frontend/src/document/hardware";
@@ -13,7 +13,7 @@ import { DEFAULT_RATES, makeQuote } from "../../frontend/src/document/quote";
 import { createReferencePlate, type CabinetFeature, type CadDocument, type FrontsFeature } from "../../frontend/src/document/types";
 import { parseDocument } from "../../frontend/src/document/validate";
 import { drillings, frontsHoleCount } from "../../frontend/src/features/fronts-drillings";
-import { FLAP_STAY, frontsHardware, frontsParts, frontsProblem, GORGE, GORGE_PROFILE, liftStay } from "../../frontend/src/features/fronts-parts";
+import { FLAP_STAY, FOLD_LIFT, frontsHardware, frontsParts, frontsProblem, GORGE, GORGE_PROFILE, liftStay } from "../../frontend/src/features/fronts-parts";
 import { rotationMatrix } from "../../frontend/src/features/motion";
 import { Recomputer } from "../../frontend/src/history/recompute";
 import { setupKernel } from "./kernel-setup";
@@ -34,6 +34,36 @@ function swung(swing: NonNullable<ReturnType<typeof doorSwing>>, p: number[]): n
 }
 
 describe("porte relevable et abattant", () => {
+  it("pliante : deux volets, le bas plié contre le haut en montant, son bord bas le long de la façade ; une poignée, une ferrure", () => {
+    const f = fronts({ side: "top", fold: true });
+    const parts = frontsParts(f, wall);
+    expect(parts.map((p) => [p.name, p.role])).toEqual([["Volet haut", { kind: "door", hinge: "top" }], ["Volet bas", { kind: "door", hinge: "fold" }]]);
+    const [upper, lower] = parts as [(typeof parts)[0], (typeof parts)[0]];
+    expect(upper.from[2] - lower.to[2]).toBeCloseTo(f.gap, 6);
+    const hw = frontsHardware(f, wall);
+    expect(hw.find((h) => h.name === FOLD_LIFT)?.quantity).toBe(1);
+    expect(hw.find((h) => h.name.startsWith("Poignée"))?.quantity).toBe(1);
+    expect(drillings(upper, f, []).filter((h) => h.radius < 10)).toEqual([]);
+    expect(drillings(lower, f, []).filter((h) => h.radius > 10).every((h) => Math.abs(h.at[2] - (lower.to[2] - 22.5)) < 1e-6)).toBe(true);
+    // Opening: the upper leaf lifts about its top edge; the lower one stays hinged to it, its bottom edge up the front.
+    const doc = docOf(wall, f);
+    const [su, sl] = [doorSwing(doc, "fr1#0")!, doorSwing(doc, "fr1#1")!];
+    expect(Math.abs(su.angle)).toBe(80);
+    expect(sl.fold).toBeDefined();
+    const at = (pose: { rotation: number[]; translation: number[] }, p: number[]) => [0, 1, 2].map((i) => pose.rotation[i * 3]! * p[0]! + pose.rotation[i * 3 + 1]! * p[1]! + pose.rotation[i * 3 + 2]! * p[2]! + pose.translation[i]!);
+    const x = (lower.from[0] + lower.to[0]) / 2;
+    for (const s of [0.25, 0.5, 1]) {
+      const [pu, pl] = [swingPose(su, s), swingPose(sl, s)];
+      // The middle hinge: the bottom of the upper leaf and the top of the lower one stay together (within the gap).
+      const [a, b] = [at(pu, [x, upper.from[1], upper.from[2]]), at(pl, [x, lower.from[1], lower.to[2]])];
+      expect(Math.hypot(a[0]! - b[0]!, a[1]! - b[1]!, a[2]! - b[2]!), String(s)).toBeLessThan(f.gap + 0.01);
+      // Its bottom edge: never into the cabinet, and up as it opens.
+      const bottom = at(pl, [x, lower.from[1], lower.from[2]]);
+      expect(bottom[1]!, String(s)).toBeLessThanOrEqual(lower.from[1] + 0.5);
+      expect(bottom[2]!, String(s)).toBeGreaterThan(lower.from[2]);
+    }
+  });
+
   it("la porte relevable a ses charnières le long du chant haut, ses trous de poignée en bas au milieu", () => {
     const f = fronts({ side: "top" });
     const [door] = frontsParts(f, wall);

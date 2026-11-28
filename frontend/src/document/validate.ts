@@ -262,7 +262,7 @@ function checkFeature(feature: Json, where: string, errors: string[]): void {
       if (!["overlay", "inset"].includes(feature.mount as string)) errors.push(`${where} : pose des façades inconnue.`);
       checkNumbers(feature, ["drawers", "gap", "thickness"], where, errors); for (const k of ["topDrawer", "innerDrawers"]) if (feature[k] !== undefined && !(isFiniteNumber(feature[k]) && (feature[k] as number) > 0 && (k === "topDrawer" || Number.isInteger(feature[k])))) errors.push(`${where} : « ${k} » doit être un nombre positif.`);
       if (typeof feature.hinges !== "boolean" || typeof feature.handles !== "boolean") errors.push(`${where} : réglages de quincaillerie invalides.`);
-      if (feature.side !== undefined && !["left", "right", "top", "bottom"].includes(feature.side as string)) errors.push(`${where} : côté des charnières inconnu.`);
+      if ((feature.side !== undefined && !["left", "right", "top", "bottom"].includes(feature.side as string)) || (feature.fold !== undefined && typeof feature.fold !== "boolean")) errors.push(`${where} : côté des charnières (ou porte pliante) inconnu.`);
       if (feature.grip !== undefined && feature.grip !== "gorge") errors.push(`${where} : prise de main inconnue.`);
       if (feature.face !== undefined && feature.face !== "left" && feature.face !== "right") errors.push(`${where} : côté de la porte latérale inconnu.`);
       if (glassFieldsProblem(feature, ["flat", "frame", "glass", "fluted", "slats"])) errors.push(`${where} : ${glassFieldsProblem(feature, ["flat", "frame", "glass", "fluted", "slats"])}`);

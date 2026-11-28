@@ -85,6 +85,8 @@ export interface KitchenUnit {
   dividers?: number;
   /** One door: the side of its hinges (missing: left; « top »: a lift-up door, « bottom »: a flap). */
   side?: "left" | "right" | "top" | "bottom";
+  /** A lift-up door in two leaves, folding as it lifts (a casquette's corner caisson). */
+  fold?: boolean;
   /** Its fronts without handles, on gorge profiles. */
   grip?: "gorge";
   /** Its fronts without handles at all. */

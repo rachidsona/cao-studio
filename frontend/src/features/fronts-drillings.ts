@@ -21,14 +21,16 @@ export function drillings(part: FrontPart, f: FrontsFeature, shelves: [number, n
   const [x1, y1, z1] = part.to;
   const inside = y1; // the face towards the cabinet (+Y)
   const out: { at: Vec3; radius: number; depth: number }[] = [];
-  const up = role.kind === "door" && (role.hinge === "top" || role.hinge === "bottom");
+  // The lower leaf of a folding lift-up door: hinged along its top edge to the upper leaf, as a lift-up door is.
+  const top = role.kind === "door" && (role.hinge === "top" || role.hinge === "fold");
+  const up = top || (role.kind === "door" && role.hinge === "bottom");
   // As many hinges as the door's height asks, or more when its weight does (stamped: document/hardware.ts stampHinges).
   const count = (height: number) => (index !== undefined ? f.hingeCounts?.[index] : undefined) ?? hingeCount(height);
   if (role.kind === "door" && f.hinges && (!isGlass(f) || woodFrame(f))) {
     const cup = { edge: f.hw?.cupEdge ?? 22.5, radius: (f.hw?.cupDiameter ?? 35) / 2, depth: f.hw?.cupDepth ?? 13 };
     if (up) {
       // A lift-up door or a flap: along its top or its bottom edge, their plates on the top or the bottom board.
-      const z = role.hinge === "top" ? z1 - cup.edge : z0 + cup.edge;
+      const z = top ? z1 - cup.edge : z0 + cup.edge;
       for (const x of hingeHeights(x0, x1, count(x1 - x0)).heights) out.push({ at: [x, inside, z], radius: cup.radius, depth: cup.depth });
     } else {
       const x = role.hinge === "left" ? x0 + cup.edge : x1 - cup.edge;
@@ -36,14 +38,15 @@ export function drillings(part: FrontPart, f: FrontsFeature, shelves: [number, n
       for (const z of hingeHeights(z0, z1, count(z1 - z0), shelves).heights) out.push({ at: [x, inside, z], radius: cup.radius, depth: cup.depth });
     }
   }
-  if (f.handles && f.grip !== "gorge") {
+  // A folding door is opened by its lower leaf alone.
+  if (f.handles && f.grip !== "gorge" && !(f.fold && role.kind === "door" && role.hinge === "top")) {
     // The chosen handle's spacing (one hole for a knob) and hole.
     const spacing = f.hw?.handleSpacing ?? 128;
     const pair = spacing > 0 ? [-spacing / 2, spacing / 2] : [0];
     const radius = (f.hw?.handleHole ?? 5) / 2;
     if (up) {
       // Across the middle, near the edge that opens: the bottom of a lift-up door, the top of a flap.
-      const zc = role.kind === "door" && role.hinge === "top" ? z0 + handleInset(f) : z1 - handleInset(f);
+      const zc = top ? z0 + handleInset(f) : z1 - handleInset(f);
       for (const dx of pair) out.push({ at: [(x0 + x1) / 2 + dx, inside, zc], radius, depth: y1 - y0 });
     } else if (role.kind === "door") {
       // Vertical pair near the opening edge, in the upper part of the door.

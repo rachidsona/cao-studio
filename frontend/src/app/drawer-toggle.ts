@@ -33,8 +33,27 @@ const DURATION = 250;
 const DOOR_ANGLE = 100;
 /** A flap comes down to the horizontal. */
 const FLAP_ANGLE = 90;
+/** A folding lift-up door: its upper leaf lifts this far, the lower one folded against it. */
+const FOLD_ANGLE = 80;
 
-type Swing = { axis: Axis; pivot: Vec3; angle: number };
+/**
+ * How a door turns: about `axis` through `pivot`, by `angle` (degrees). `fold`: the lower leaf of a folding lift-up
+ * door — first folded about its own top edge (this point) by twice the angle the other way, then carried by the upper
+ * leaf's turn: its middle hinge stays on the upper leaf, its bottom edge comes up along the front.
+ */
+export type Swing = { axis: Axis; pivot: Vec3; angle: number; fold?: Vec3 };
+
+/** Where a door is when open by `s` (0 closed … 1 open). */
+export function swingPose(swing: Swing, s: number): { rotation: number[]; translation: Vec3 } {
+  const lift = poseOf({ kind: "hinge", axis: swing.axis, pivot: swing.pivot, angle: swing.angle * s });
+  if (!swing.fold) return lift;
+  const fold = poseOf({ kind: "hinge", axis: swing.axis, pivot: swing.fold, angle: -2 * swing.angle * s });
+  const [a, b] = [lift.rotation, fold.rotation];
+  const rotation = [0, 1, 2].flatMap((i) => [0, 1, 2].map((j) => a[i * 3]! * b[j]! + a[i * 3 + 1]! * b[3 + j]! + a[i * 3 + 2]! * b[6 + j]!));
+  const t = fold.translation;
+  const translation = [0, 1, 2].map((i) => a[i * 3]! * t[0] + a[i * 3 + 1]! * t[1] + a[i * 3 + 2]! * t[2] + lift.translation[i]!) as Vec3;
+  return { rotation, translation };
+}
 
 /** The part of a feature that this body is. */
 const partNumber = (bodyId: string) => (bodyId.includes("#") ? Number(bodyId.slice(bodyId.indexOf("#") + 1)) : 0);
@@ -64,14 +83,20 @@ function frontSwing(doc: CadDocument, fronts: Parameters<typeof frontsParts>[0],
     return [cabinet.origin[0] + r[0]! * dx + r[1]! * dy, cabinet.origin[1] + r[3]! * dx + r[4]! * dy, z];
   };
   const out: Vec3 = [-r[1]!, -r[4]!, 0];
-  if (part.role.hinge === "top" || part.role.hinge === "bottom") {
-    // A lift-up door or a flap: about the horizontal line of its top or bottom edge, along the cabinet's width.
-    const x = (part.from[0] + part.to[0]) / 2;
-    const [hingeZ, freeZ] = part.role.hinge === "top" ? [part.to[2], part.from[2]] : [part.from[2], part.to[2]];
+  if (part.role.hinge === "top" || part.role.hinge === "bottom" || part.role.hinge === "fold") {
+    // A lift-up door or a flap: about the horizontal line of its top or bottom edge, along the cabinet's width; the
+    // lower leaf of a folding one, carried by the upper leaf.
+    const leaf = part.role.hinge === "fold" ? parts.find((p) => p.role?.kind === "door" && p.role.hinge === "top") : part;
+    if (!leaf || leaf.role?.kind !== "door") return null;
+    const x = (leaf.from[0] + leaf.to[0]) / 2;
+    const [hingeZ, freeZ] = leaf.role.hinge === "top" ? [leaf.to[2], leaf.from[2]] : [leaf.from[2], leaf.to[2]];
     const across = (Math.abs(r[0]!) > 0.5 ? 0 : 1) as Axis;
-    const [px, py] = turned(x, part.from[1], hingeZ);
-    const [fx, fy] = turned(x, part.from[1], freeZ);
-    return outwards(across, [px, py, hingeZ], [fx, fy, freeZ], out, part.role.hinge === "top" ? DOOR_ANGLE : FLAP_ANGLE);
+    const [px, py] = turned(x, leaf.from[1], hingeZ);
+    const [fx, fy] = turned(x, leaf.from[1], freeZ);
+    const lift = outwards(across, [px, py, hingeZ], [fx, fy, freeZ], out, leaf.role.hinge === "top" ? (fronts.fold ? FOLD_ANGLE : DOOR_ANGLE) : FLAP_ANGLE);
+    if (part.role.hinge !== "fold") return lift;
+    const [mx, my] = turned(x, part.from[1], part.to[2]);
+    return { ...lift, fold: [mx, my, part.to[2]] };
   }
   const [hingeX, freeX] = part.role.hinge === "left" ? [part.from[0], part.to[0]] : [part.to[0], part.from[0]];
   const z = (part.from[2] + part.to[2]) / 2;
@@ -343,7 +368,7 @@ export function bindDrawers(root: HTMLElement, viewport: Viewport, editor: Edito
   const doorItem = (door: string[], swing: Swing): Item => ({
     key: door[0]!,
     bodies: door,
-    pose: () => (s) => poseOf({ kind: "hinge", axis: swing.axis, pivot: swing.pivot, angle: swing.angle * s }),
+    pose: () => (s) => swingPose(swing, s),
   });
   const drawerItem = (drawer: { key: string; bodies: string[] }): Item => ({
     ...drawer,

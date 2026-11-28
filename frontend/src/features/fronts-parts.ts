@@ -26,8 +26,11 @@ export interface FrontPart {
   name: string;
   from: Vec3;
   to: Vec3;
-  /** Door (hinged on its left or right edge, or along its top or bottom) or drawer front: where its hardware goes. */
-  role?: { kind: "door"; hinge: "left" | "right" | "top" | "bottom" } | { kind: "drawer" };
+  /**
+   * Door (hinged on its left or right edge, or along its top or bottom; `fold`: the lower leaf of a folding lift-up
+   * door, hinged to the one over it) or drawer front: where its hardware goes.
+   */
+  role?: { kind: "door"; hinge: "left" | "right" | "top" | "bottom" | "fold" } | { kind: "drawer" };
   /** The glass of a glazed door: the index of its door (it turns with it). */
   of?: number;
   /** A gorge profile: bought by the metre, fixed to the cabinet (it does not move with a front). */
@@ -55,6 +58,8 @@ export const LIFT_CLASSES: readonly { upTo: number; name: string }[] = [
   { upTo: 9000, name: "Compas de porte relevable force 4 (paire)" },
 ];
 export const FLAP_STAY = "Compas d'abattant (paire)";
+/** The fitting of a folding lift-up door (two leaves): both lift, the lower folding against the upper. */
+export const FOLD_LIFT = "Ferrure de porte relevante pliante (paire)";
 
 /** The stays a lift-up door of this height (mm) and weight (kg) needs; null: beyond what a pair holds. */
 export function liftStay(height: number, mass: number): { name: string; factor: number } | null {
@@ -235,7 +240,12 @@ export function frontsParts(f: FrontsFeature, hung: CabinetFeature | undefined):
   const ceiling = cabinet.top === "rails" && cabinet.railFront === "edge" ? H - railRise(cabinet) - 5 : Infinity;
   // Under a drawer, the doors stop below it.
   const doorTop = f.layout !== "drawers" && f.topDrawer ? z1 - f.topDrawer - between : z1;
-  if (f.layout === "door") box(f.side === "top" ? "Porte relevable" : f.side === "bottom" ? "Abattant" : "Porte", [x0, y0, z0], [x1, y1, doorTop], { kind: "door", hinge: f.side ?? "left" });
+  if (f.layout === "door" && f.side === "top" && f.fold) {
+    // A folding lift-up door: two leaves of half its height, the lower one hinged to the upper.
+    const zm = (z0 + doorTop) / 2;
+    box("Volet haut", [x0, y0, zm + g / 2], [x1, y1, doorTop], { kind: "door", hinge: "top" });
+    box("Volet bas", [x0, y0, z0], [x1, y1, zm - g / 2], { kind: "door", hinge: "fold" });
+  } else if (f.layout === "door") box(f.side === "top" ? "Porte relevable" : f.side === "bottom" ? "Abattant" : "Porte", [x0, y0, z0], [x1, y1, doorTop], { kind: "door", hinge: f.side ?? "left" });
   else if (f.layout === "doors") {
     const mid = (x0 + x1) / 2;
     box("Porte gauche", [x0, y0, z0], [mid - g / 2, y1, doorTop], { kind: "door", hinge: "left" });
@@ -342,7 +352,8 @@ export function frontsHardware(f: FrontsFeature, cabinet: CabinetFeature | undef
   const hinges = f.hinges ? doors.reduce((n, d) => n + hingesFor(up ? d.to[0] - d.from[0] : d.to[2] - d.from[2], mass?.(parts.indexOf(d)) ?? 0), 0) : 0;
   // A glazed door hangs on hinges made for its aluminium frame; its glass and its profile are bought.
   if (hinges) out.push({ name: isGlass(f) && !woodFrame(f) ? ALU_HINGE : "Charnière à boîtier Ø35", quantity: hinges });
-  if (up && doors[0]) {
+  if (up && f.fold && doors.length > 1) out.push({ name: FOLD_LIFT, quantity: 1 });
+  else if (up && doors[0]) {
     const door = doors[0];
     const stay = f.side === "bottom" ? FLAP_STAY : (liftStay(door.to[2] - door.from[2], mass?.(parts.indexOf(door)) ?? 0)?.name ?? LIFT_CLASSES.at(-1)!.name);
     out.push({ name: stay, quantity: 1 });
@@ -350,7 +361,9 @@ export function frontsHardware(f: FrontsFeature, cabinet: CabinetFeature | undef
   // The English drawers behind the doors run on slides too (no front, no handle).
   const inner = f.layout !== "drawers" ? (f.innerDrawers ?? 0) : 0;
   if (drawers.length + inner) out.push({ name: "Coulisse de tiroir (paire)", quantity: drawers.length + inner });
-  if (f.handles && f.grip !== "gorge" && doors.length + drawers.length) out.push({ name: "Poignée entraxe 128 mm", quantity: doors.length + drawers.length });
+  // A folding door: one handle, on its lower leaf.
+  const handled = doors.length + drawers.length - (up && f.fold && doors.length > 1 ? 1 : 0);
+  if (f.handles && f.grip !== "gorge" && handled) out.push({ name: "Poignée entraxe 128 mm", quantity: handled });
   const profiles = parts.filter((p) => p.gorge);
   if (profiles.length) out.push({ name: GORGE_PROFILE, quantity: Math.round(profiles.reduce((m, p) => m + (p.to[0] - p.from[0]), 0) / 10) / 100, unit: "m" });
   // The glass and the aluminium frame of glazed doors, or of glazed drawer fronts.

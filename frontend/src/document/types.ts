@@ -860,6 +860,8 @@ export interface FrontsFeature extends FeatureBase {
    * edge and held by a pair of stays; « bottom »: a drop-down flap, hinged along its bottom edge.
    */
   side?: "left" | "right" | "top" | "bottom";
+  /** A lift-up door (« top ») in two leaves, the lower one folding against the upper as it lifts (features/fronts-parts.ts). */
+  fold?: boolean;
   /**
    * « gorge »: no handles. Each front leaves a finger space above its top edge, in front of a recessed aluminium
    * profile fitted between the sides (features/fronts-parts.ts).
