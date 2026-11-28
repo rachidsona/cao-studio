@@ -3043,6 +3043,10 @@ opération existante.
       l'élargit de tout ce reste (la place ouverte, celle des fileurs et des fileurs muraux), dans ses limites, ses
       voisins se poussant ; la place gardée par un « Espace libre » reste, voulue. Refusé, avec la raison, quand la
       rangée ne le tient pas.
+    - **Remplir un vide de caissons égaux** (`features/kitchen-run-equal.ts`) : sous « Place libre », chaque vide d'une
+      rangée (30 cm au moins, ouvert ou gardé par un « Espace libre ») a ses boutons « 2 », « 3 », « 4 » : autant de
+      caissons de même largeur côte à côte le remplissent, bas ou hauts selon la rangée (une porte jusqu'à 60 cm, deux
+      au-delà), les autres meubles où ils étaient. Refusé, avec la raison, hors des largeurs d'un caisson.
     - **Supprimer un meuble** sur la bande (Suppr, « Supprimer », « Retirer », ou plusieurs à la fois) **laisse sa
       place vide** (un « Espace libre » de sa largeur, comme un meuble supprimé dans la 3D) : ses voisins ne bougent
       pas. On referme quand on le décide : « Resserrer les meubles » (toutes les places vides), un voisin glissé

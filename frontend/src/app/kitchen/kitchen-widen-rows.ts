@@ -1,10 +1,12 @@
 /**
  * « Place libre » d'un linéaire de cuisine : combler le vide d'une rangée en prolongeant un de ses meubles, choisi dans
- * la liste (features/kitchen-run-widen.ts). Une ligne par rangée qui a un reste à combler.
+ * la liste (features/kitchen-run-widen.ts), ou remplir un vide de 2, 3 ou 4 caissons égaux (features/kitchen-run-equal.ts).
+ * Une ligne par rangée qui a un reste à combler, par vide à remplir.
  */
 import { kitchenSizes, type RunGeometry } from "../../document/kitchen-plan-shapes";
 import type { DisplayUnit, KitchenFloorPlan, KitchenRunItem } from "../../document/types";
-import { fillRun, itemEntry } from "../../features/kitchen-run-items";
+import { equalFill } from "../../features/kitchen-run-equal";
+import { fillRun, itemEntry, openRoom } from "../../features/kitchen-run-items";
 import { restToFill, widenable, widenedToFill } from "../../features/kitchen-run-widen";
 import { formatLength } from "../../measurements/units";
 import { el } from "../../ui/dom";
@@ -40,6 +42,23 @@ export function widenRows(host: WidenHost): HTMLElement | null {
     });
     return [el("p", { class: "text-2xs text-gray-500 dark:text-gray-400" }, `${row === "wall" ? "En haut" : "En bas"}, ${formatLength(rest, unit)} à combler :`), el("div", { class: "flex gap-1" }, pick, go)];
   });
-  if (!rows.length) return null;
-  return el("div", { class: "space-y-1 pt-1", "data-widen-rows": "" }, el("p", { class: "font-medium" }, "Combler le vide en prolongeant un meuble"), ...rows);
+  // Each empty stretch (30 cm at least), filled with 2, 3 or 4 equal caissons.
+  const equal = (["base", "wall"] as const).flatMap((row) =>
+    openRoom(fill, row).filter(([a, b]) => b - a >= 300).map(([a, b]) => {
+      const counts = [2, 3, 4].map((n) => {
+        const button = el("button", { type: "button", class: SMALL, "data-equal-fill": `${row}:${n}`, title: `${n} caissons de ${formatLength(Math.floor(((b - a) / n) * 10) / 10, unit)} côte à côte` }, String(n));
+        button.addEventListener("click", () => {
+          const made = equalFill(plan, g, items, heights, row, [a, b], n);
+          if (typeof made === "string") return host.notify(made);
+          host.change(made.items, made.ids[0]!);
+        });
+        return button;
+      });
+      return el("div", { class: "flex items-center gap-1" }, el("span", { class: "flex-1 text-2xs text-gray-500 dark:text-gray-400" }, `${row === "wall" ? "En haut" : "En bas"}, ${formatLength(b - a, unit)} :`), ...counts);
+    }),
+  );
+  if (!rows.length && !equal.length) return null;
+  return el("div", { class: "space-y-1 pt-1", "data-widen-rows": "" },
+    ...(rows.length ? [el("p", { class: "font-medium" }, "Combler le vide en prolongeant un meuble"), ...rows] : []),
+    ...(equal.length ? [el("p", { class: "font-medium" }, "Remplir un vide de caissons égaux"), ...equal] : []));
 }

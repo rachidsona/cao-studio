@@ -975,7 +975,7 @@ test("linéaire : un meuble glissé à la souris dans la place vide s'y pose, la
   expect(errors).toEqual([]);
 });
 
-test("linéaire : le vide comblé en prolongeant un meuble choisi dans « Place libre »", async ({ page }) => {
+test("linéaire : le vide comblé en prolongeant un meuble choisi dans « Place libre », ou de caissons égaux", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await newProject(page, "zz-test-plan-cuisine-prolonger");
@@ -1000,6 +1000,12 @@ test("linéaire : le vide comblé en prolongeant un meuble choisi dans « Place 
   await expect(strip.locator('[data-free="base"]')).toHaveCount(0, { timeout: 30_000 });
   await expect(tool.locator('[data-widen="base"]')).toHaveCount(0);
   expect((await strip.locator("[data-item]", { hasText: "Bas 2 portes" }).allTextContents()).some((t) => !/\b100\b/.test(t))).toBe(true);
+  // The wall row empty: filled with 3 equal wall units, side by side.
+  await tool.locator('[data-equal-fill="wall:3"]').click();
+  await expect(strip.locator("[data-item]", { hasText: /^Haut/ })).toHaveCount(3, { timeout: 30_000 });
+  const widths = new Set((await strip.locator("[data-item]", { hasText: /^Haut/ }).allTextContents()).map((t) => t.replace(/^\D+/, "")));
+  expect(widths.size).toBe(1);
+  await expect(strip.locator('[data-free="wall"]')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
