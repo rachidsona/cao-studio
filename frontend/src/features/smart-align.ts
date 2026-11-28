@@ -72,3 +72,32 @@ export function alignBox(box: Box, others: readonly Box[], translate: Vec3, axes
   });
   return { translate: t, guides };
 }
+
+/**
+ * The free room along `axis` round a box moved by `translate`: from the nearest face of the boxes wholly before it to
+ * that of those wholly after it, among those it meets across and in height (±Infinity: nothing on that side).
+ */
+export function roomAlong(box: Box, others: readonly Box[], translate: Vec3, axis: number): [number, number] {
+  const [min, max] = [box[0].map((v, k) => v + translate[k]!), box[1].map((v, k) => v + translate[k]!)];
+  const meets = (o: Box) => [1 - axis, 2].every((k) => o[0][k]! < max[k]! - 1 && o[1][k]! > min[k]! + 1);
+  let [lo, hi] = [-Infinity, Infinity];
+  for (const o of others.filter(meets)) {
+    if (o[1][axis]! <= min[axis]! + 1) lo = Math.max(lo, o[1][axis]!);
+    else if (o[0][axis]! >= max[axis]! - 1) hi = Math.min(hi, o[0][axis]!);
+  }
+  return [lo, hi];
+}
+
+/** The box held in the middle of its free room along `axis` when it comes within `tolerance` of it; else null. */
+export function middleOfRoom(box: Box, others: readonly Box[], translate: Vec3, axis: number, tolerance: number): { translate: Vec3; guides: Guide[] } | null {
+  const [lo, hi] = roomAlong(box, others, translate, axis);
+  const width = box[1][axis]! - box[0][axis]!;
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi - lo <= width + 1) return null;
+  const shift = (lo + hi) / 2 - (box[0][axis]! + box[1][axis]!) / 2;
+  if (Math.abs(shift - translate[axis]!) > tolerance) return null;
+  const t: Vec3 = [...translate];
+  t[axis] = shift;
+  // From each side of the room to the box, at its middle across and in height.
+  const at = (v: number): Vec3 => [0, 1, 2].map((k) => (k === axis ? v : (box[0][k]! + box[1][k]!) / 2 + t[k]!)) as Vec3;
+  return { translate: t, guides: [[at(lo), at(box[0][axis]! + shift)], [at(box[1][axis]! + shift), at(hi)]] };
+}

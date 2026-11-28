@@ -297,3 +297,42 @@ test("Dupliquer un caisson collé à une cuisine du Plan : ses meubles sont pous
   expect(errors).toEqual([]);
 });
 
+
+test("tiré le long de son mur, un caisson se tient au milieu de la place libre ; la barre dit ce qui reste de chaque côté", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const api = await newProject(page, "zz-caisson-milieu");
+  // A room 3 m wide, a cabinet 600 wide against wall A at x = 1000: the middle of the room is x = 1200 for it.
+  const room = { id: "pc1", type: "room", name: "Pièce 1", height: 2500, thickness: 200, walls: [3000, 2500, 3000, 2500].map((length) => ({ length, angle: 90 })), obstacles: [] };
+  const cabinet = { id: "cb1", type: "cabinet", name: "Bas mur", origin: [1000, -560, 0], width: 600, height: 870, depth: 560, thickness: 18, back: "applied", backThickness: 3, shelves: 1, plinth: 150, construction: "sides-through" };
+  await page.evaluate(async ({ url, features }) => {
+    const csrf = decodeURIComponent(document.cookie.match(/csrftoken=([^;]+)/)?.[1] ?? "");
+    const now = (await (await fetch(url, { headers: { Accept: "application/json" } })).json()) as { version: number; document: Record<string, unknown> };
+    const bodyInfo = Object.fromEntries([0, 1, 2, 3].map((i) => [`pc1#${i}`, { room: true }]));
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf }, body: JSON.stringify({ document: { ...now.document, features, bodyInfo }, base_version: now.version, message: "Pièce" }) });
+  }, { url: api, features: [room, cabinet] });
+  await page.reload();
+  await expect(page.locator('[data-ref="loading"]')).toHaveCount(0, { timeout: 60_000 });
+  await click(page, '[data-action="view"][data-view="top"]');
+  await click(page, '[data-action="fit"]');
+  await page.waitForTimeout(1200);
+  await page.locator('[data-head^="group:"]').filter({ hasText: "Bas mur" }).first().click();
+  const grip = page.getByRole("toolbar", { name: "Caisson sélectionné" }).getByLabel("Déplacer le caisson");
+  await expect(grip).toBeVisible();
+  const box = (await grip.boundingBox())!;
+  const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  // Brought to the right a little at a time: held in the middle on the way, 120 cm free on each side.
+  let dx = 0;
+  while (dx < 400 && !(await grip.textContent())?.includes("milieu")) await page.mouse.move(x + (dx += 3), y);
+  await expect(grip).toContainText("120 cm | 120 cm (milieu)");
+  await page.mouse.up();
+  await page.waitForTimeout(900);
+  await page.keyboard.press("Control+s");
+  await expect(page.locator('[data-ref="status-save"]')).toHaveText("Enregistré", { timeout: 30_000 });
+  const project = await page.evaluate(async (url) => (await fetch(url, { headers: { Accept: "application/json" } })).json(), api);
+  expect(Math.round((project.document.features as { type: string; origin?: number[] }[]).find((f) => f.type === "cabinet")!.origin![0]!)).toBe(1200);
+  expect(errors).toEqual([]);
+});

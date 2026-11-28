@@ -2,7 +2,7 @@
  * Déplacer un caisson d'un geste : quand les pièces d'un seul caisson sont sélectionnées, deux poignées s'affichent
  * dans la barre du bas de la vue, avec ses cotes (app/cabinet-bar.ts). « ✥ » se tire : le caisson glisse le long de son mur (Maj : librement sur le sol), avec ses façades,
  * et s'arrête au ras des autres corps — contre le côté d'un voisin, dans l'alignement de son fond ou de sa façade,
- * au bout du plan de travail, contre un mur. Il n'entre jamais dans un autre meuble : amené dedans, il est posé à côté
+ * au bout du plan de travail, contre un mur, au milieu de la place libre entre ses voisins (la barre dit ce qui reste de chaque côté). Il n'entre jamais dans un autre meuble : amené dedans, il est posé à côté
  * de lui, au ras, du côté le plus proche (features/box-clear.ts) — ce qu'il touchait déjà (la plinthe sous lui, la
  * crédence derrière) ne le gêne pas ; il ne traverse pas non plus un mur de la Pièce (document/cabinet-clear.ts) (Alt : sans aimant ni arrêt, pour le poser où l'on veut). Un clic sur « ✥ » sans tirer le colle à une face ou
  * un coin qu'on clique ensuite (app/cabinet-stick.ts). « ↻ » le tourne d'un quart de tour sur place. « ⧉ Dupliquer »
@@ -18,7 +18,7 @@ import { bodyOrigin, deleteFeatures, findFeature, updateFeature } from "../docum
 import { withCabinetDuplicated } from "../document/unit-duplicate";
 import { featureOfBody, type CabinetFeature, type CadDocument, type Vec3 } from "../document/types";
 import { clearOf } from "../features/box-clear";
-import { alignBox, type Box } from "../features/smart-align";
+import { alignBox, middleOfRoom, roomAlong, type Box } from "../features/smart-align";
 import { formatLength } from "../measurements/units";
 import { SnapGuides } from "../viewport/snap-guides";
 import type { Viewport } from "../viewport/viewport";
@@ -29,6 +29,8 @@ import type { Editor } from "./editor";
 
 /** How near (px) a face of the dragged cabinet sticks to a face of another body. */
 const STICK_PX = 12;
+/** How near (px) it holds in the middle of the free room along its wall. */
+const MIDDLE_PX = 16;
 
 /** The bodies of the cabinet and of its fronts, as displayed. */
 export function cabinetBodies(doc: CadDocument, bodies: readonly string[], cabinetId: string): string[] {
@@ -107,6 +109,9 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     const axes = event.shiftKey ? [0, 1] : [Math.abs(cabinetAxes(drag.cabinet.rotation ?? 0).along[0]) ? 0 : 1];
     let lines: [Vec3, Vec3][] = [];
     if (!event.altKey) ({ translate: delta, guides: lines } = alignBox(drag.box, drag.others, delta, axes, STICK_PX * viewport.worldPerPixel()));
+    // Along its wall, it holds in the middle of the free room between its neighbours (as on the run's strip).
+    const middle = event.altKey || event.shiftKey ? null : middleOfRoom(drag.box, drag.others, delta, axes[0]!, MIDDLE_PX * viewport.worldPerPixel());
+    if (middle) ({ translate: delta, guides: lines } = middle);
     delta = delta.map(Math.round) as Vec3;
     // Never into another piece of furniture: beside it, flush (no place clear on its path: where it was).
     const clear = event.altKey ? delta : keepInRoom(editor.doc, drag.box, clearOf(drag.box, drag.solid, delta, axes) ?? [0, 0, 0]);
@@ -116,7 +121,10 @@ export function bindCabinetDrag(root: HTMLElement, viewport: Viewport, editor: E
     pose(drag, delta);
     guides.show(lines, viewport);
     const moved = Math.hypot(delta[0], delta[1]);
-    if (slider) slider.textContent = `✥ ${formatLength(moved, editor.unit)}`;
+    // What stays free on each side of it, along its wall.
+    const [lo, hi] = event.shiftKey ? [-Infinity, Infinity] : roomAlong(drag.box, drag.others, delta, axes[0]!);
+    const sides = [drag.box[0][axes[0]!]! + delta[axes[0]!]! - lo, hi - drag.box[1][axes[0]!]! - delta[axes[0]!]!].filter(Number.isFinite).map((v) => formatLength(Math.max(0, v), editor.unit));
+    if (slider) slider.textContent = `✥ ${formatLength(moved, editor.unit)}${sides.length === 2 ? ` — ${sides.join(" | ")}${middle ? " (milieu)" : ""}` : ""}`;
   };
 
   const finish = async (apply: boolean, click = false) => {

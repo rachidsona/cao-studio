@@ -1,7 +1,7 @@
 /** L'accrochage intelligent dans le modèle : un point de face aligné sur des coins, un corps tiré aligné sur les autres. */
 import { describe, expect, it } from "vitest";
 import type { Vec3 } from "../../frontend/src/document/types";
-import { alignBox, alignPoint, type Box } from "../../frontend/src/features/smart-align";
+import { alignBox, alignPoint, middleOfRoom, roomAlong, type Box } from "../../frontend/src/features/smart-align";
 
 describe("accrochage intelligent en 3D", () => {
   it("un point d'une face prend le X ou le Y d'un coin proche, jamais la coordonnée hors de la face", () => {
@@ -40,5 +40,19 @@ describe("accrochage intelligent en 3D", () => {
     // wins — raised to 254, not 250.
     const c: Box = [[200, 0, 0], [300, 100, 354]];
     expect(alignBox(a, [b, c], [0, 0, 252], [2], 5).translate).toEqual([0, 0, 254]);
+  });
+
+  it("le long de son mur, un caisson tiré se tient au milieu de la place libre entre ses voisins", () => {
+    // A 600 cabinet between a neighbour ending at x = 0 and a wall from x = 2000; the worktop above does not count.
+    const box: Box = [[100, -600, 100], [700, 0, 900]];
+    const others: Box[] = [[[-600, -600, 100], [0, 0, 900]], [[2000, -600, 0], [2100, 0, 2500]], [[-600, -600, 900], [3000, 0, 938]]];
+    expect(roomAlong(box, others, [0, 0, 0], 0)).toEqual([0, 2000]);
+    // Its middle at 1000: moved by 600 it is there; by 590, within the tolerance, it is held there.
+    const held = middleOfRoom(box, others, [590, 0, 0], 0, 20);
+    expect(held?.translate).toEqual([600, 0, 0]);
+    expect(held?.guides).toEqual([[[0, -300, 500], [700, -300, 500]], [[1300, -300, 500], [2000, -300, 500]]]);
+    expect(middleOfRoom(box, others, [400, 0, 0], 0, 20)).toBeNull();
+    // Nothing on one side: no middle.
+    expect(middleOfRoom(box, others.slice(1), [590, 0, 0], 0, 20)).toBeNull();
   });
 });
