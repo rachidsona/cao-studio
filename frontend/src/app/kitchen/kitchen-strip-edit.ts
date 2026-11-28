@@ -2,7 +2,7 @@
  * Une largeur cliquée sur la bande d'un linéaire, changée dans la calculatrice (ui/calculator.ts) : celle d'un meuble,
  * dans ses limites ; celle de la porte d'un meuble d'angle, en bas ou en haut — la porte d'un angle à étagère, ou la
  * porte pliante d'un angle en L, dont le bras suit. Une valeur hors limites est refusée, avec ses bornes. Pur, hors la
- * calculatrice.
+ * calculatrice. La place libre à gauche ou à droite du meuble choisi aussi : tapée, le meuble glisse d'autant.
  */
 import { cornerLimits, withCorner, type CornerSetting } from "../../document/kitchen-corners";
 import { cornerKind, FRONT, jointOf, kitchenSizes, wallCornerKind, type KitchenRun } from "../../document/kitchen-plan-shapes";
@@ -26,12 +26,19 @@ export interface StripEditHost {
   setItems(items: KitchenRunItem[]): void;
   /** A corner's sizes changed. */
   setCorners(c: CornerSetting): void;
+  /** A unit slid along the run by `by` mm, in the free room beside it (document/kitchen-slide.ts). */
+  slide(id: string, by: number): void;
 }
 
 /** What a width typed makes: the items or the corner settings, or why not. */
-export function stripWidth(host: Omit<StripEditHost, "setItems" | "setCorners">, what: StripEdit, mm: number): { items: KitchenRunItem[] } | { corners: CornerSetting } | string {
+export function stripWidth(host: Omit<StripEditHost, "setItems" | "setCorners" | "slide">, what: StripEdit, mm: number): { items: KitchenRunItem[] } | { corners: CornerSetting } | { slide: number } | string {
   const { plan, run, unit } = host;
   const range = ([lo, hi]: [number, number]) => `de ${formatLength(lo, unit)} à ${formatLength(hi, unit)}`;
+  // The free room typed on one side: the unit slides by the difference, within the room on both sides.
+  if (what.kind === "gap") {
+    if (mm < -0.05 || mm > what.room + 0.05) return `La place libre va ${range([0, what.room])}.`;
+    return { slide: Math.round((what.side === "left" ? mm - what.width : what.width - mm) * 10) / 10 };
+  }
   if (what.kind === "item") {
     const item = host.items.find((i) => i.id === what.id);
     if (!item) return "Ce meuble n'est plus sur le linéaire.";
@@ -59,14 +66,15 @@ export function editStripWidth(host: StripEditHost, what: StripEdit, label: Elem
     anchor: { x: left + width / 2, y: top + height / 2 },
     value: what.width,
     unit: host.unit,
-    title: what.kind === "item" ? "Largeur du meuble" : "Largeur de la porte d'angle",
+    title: what.kind === "item" ? "Largeur du meuble" : what.kind === "gap" ? `Place libre ${what.side === "left" ? "à gauche" : "à droite"}` : "Largeur de la porte d'angle",
     locked: false,
     noLock: true,
     inputAttrs: { "data-strip-width": "" },
     onSubmit: (mm) => {
       const made = stripWidth(host, what, mm);
       if (typeof made === "string") return made;
-      if ("items" in made) host.setItems(made.items);
+      if ("slide" in made) host.slide((what as { id: string }).id, made.slide);
+      else if ("items" in made) host.setItems(made.items);
       else host.setCorners(made.corners);
       return true;
     },

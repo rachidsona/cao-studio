@@ -45,4 +45,12 @@ describe("largeurs de la bande à la calculatrice", () => {
       expect(door.to - door.from, kind).toBeCloseTo(400, 6);
     }
   });
+
+  it("la place libre tapée d'un côté du meuble choisi le fait glisser d'autant, dans la place des deux côtés", () => {
+    const host = at({});
+    // 300 free on its left out of 500 in all: 100 typed on the left, it slides 200 to the left; 100 on its right, 100 to the right.
+    expect(stripWidth(host, { kind: "gap", id: "k1", side: "left", width: 300, room: 500 }, 100)).toEqual({ slide: -200 });
+    expect(stripWidth(host, { kind: "gap", id: "k1", side: "right", width: 200, room: 500 }, 100)).toEqual({ slide: 100 });
+    expect(stripWidth(host, { kind: "gap", id: "k1", side: "left", width: 300, room: 500 }, 600)).toMatch(/La place libre va de 0 cm à 50 cm/);
+  });
 });

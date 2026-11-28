@@ -58,6 +58,9 @@ export function withRoomLeft(items: readonly KitchenRunItem[], ids: readonly str
   return items.flatMap((i): KitchenRunItem[] => (!ids.includes(i.id) ? [i] : isSpace(i) ? [] : [{ id: i.id, model: rowOf(itemEntry(i)) === "wall" ? SPACE_WALL : SPACE, width: i.width }]));
 }
 
+/** A unit copied on a strip (Ctrl + C), to be pasted on this run or another (Ctrl + V): as it is, without its place. */
+let copied: KitchenRunItem | null = null;
+
 export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(event: KeyboardEvent): void; menu(id: string, event: MouseEvent): void } {
   const { items } = host;
   const chosenIds = () => (host.picked.length > 1 ? [...host.picked] : host.chosen ? [host.chosen] : []);
@@ -78,6 +81,12 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
     const same = item ? items.filter((i) => rowOf(itemEntry(i)) === rowOf(itemEntry(item)) && (!isSpace(i) || !!i.furnished)) : [];
     return [item ? same.indexOf(item) : -1, same.length];
   };
+  const copy = (id: string) => {
+    const item = items.find((i) => i.id === id);
+    if (item && !isSpace(item)) copied = structuredClone(item);
+  };
+  // After the unit chosen when it is of its row, else at the end of its row (features/kitchen-run-items.ts `insertItem`).
+  const paste = (after: string | null) => copied && host.putAfter({ ...copied, id: newItem(items, copied.model, copied.width).id }, after ?? "");
   const step = (id: string, by: -1 | 1) => {
     const [index, count] = place(id);
     if (index + by >= 0 && index + by < count) host.move(id, index + by);
@@ -172,6 +181,12 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
       } else if (mod && event.key.toLowerCase() === "d" && ids.length) {
         duplicate(ids);
         done();
+      } else if (mod && event.key.toLowerCase() === "c" && ids.length === 1) {
+        copy(ids[0]!);
+        done();
+      } else if (mod && event.key.toLowerCase() === "v" && copied) {
+        paste(ids.length === 1 ? ids[0]! : null);
+        done();
       } else if ((event.key === "ArrowLeft" || event.key === "ArrowRight") && one && !mod) {
         step(one, event.key === "ArrowLeft" ? -1 : 1);
         done();
@@ -183,7 +198,9 @@ export function stripActions(host: StripActionsHost): { bar: HTMLElement; key(ev
       const [index, count] = place(id);
       openTreeMenu(event.clientX, event.clientY, [
         { heading: itemEntry(item).name },
-        { label: "Dupliquer", run: () => duplicate([id]) },
+        { label: "Dupliquer (Ctrl + D)", run: () => duplicate([id]) },
+        { label: "Copier (Ctrl + C)", run: () => copy(id) },
+        { label: `Coller après lui${copied ? ` : ${itemEntry(copied).name}` : ""} (Ctrl + V)`, disabled: !copied, run: () => paste(id) },
         { label: "Un cran à gauche", disabled: index <= 0, run: () => step(id, -1) },
         { label: "Un cran à droite", disabled: index >= count - 1, run: () => step(id, 1) },
         ...(high(id) ? [{ label: "Aligner sur le meuble du dessous", run: () => host.align(id) }] : []),

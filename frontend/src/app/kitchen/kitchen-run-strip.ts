@@ -96,7 +96,7 @@ export interface StripHost {
 /** What else than a unit is chosen on the strip; a caisson furnished by hand by the item that keeps its room. */
 export type StripOther = { kind: "appliance"; id: string } | { kind: "worktop" } | { kind: "cap" } | { kind: "capUnit"; key: string; name: string } | { kind: "kick" } | { kind: "caisson"; id: string } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall" };
 
-export type StripEdit = { kind: "item"; id: string; width: number } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall"; width: number };
+export type StripEdit = { kind: "item"; id: string; width: number } | { kind: "gap"; id: string; side: "left" | "right"; width: number; room: number } | { kind: "corner"; side: "left" | "right"; row: "base" | "wall"; width: number };
 
 /** The strip, in an SVG scaled to its width. */
 export function runStrip(host: StripHost): SVGSVGElement {
@@ -277,18 +277,24 @@ export function runStrip(host: StripHost): SVGSVGElement {
     if (host.menu) group.addEventListener("contextmenu", (event) => (event.preventDefault(), host.menu!(pl.item.id, event)));
     if (chosen && host.resize && !applianceOf(pl.item)) handle = () => edge(node, pl, y(z + height), height, host.resize!);
     node.append(group);
+    // The chosen unit: the free room on each side of it, clicked to type how much is left there (it slides).
+    const [lo, hi] = chosen && host.edit && host.slide ? slideRoom(fill, pl.item.id) : [0, 0];
+    for (const [side, free, mid] of [["left", -lo, pl.at + lo / 2], ["right", hi, pl.at + pl.item.width + hi / 2]] as const) {
+      if (free >= 1) node.insertAdjacentHTML("beforeend", `<text x="${mid}" y="${y(z + height / 2)}" text-anchor="middle" font-size="90" class="cursor-pointer fill-sky-700 underline dark:fill-sky-300" data-edit-gap="${side}" data-edit-id="${escapeHtml(pl.item.id)}" data-edit-width="${free}" data-edit-room="${hi - lo}"><title>Place libre ${side === "left" ? "à gauche" : "à droite"} : cliquer pour la taper, le meuble glisse</title>${Number((free / 10).toFixed(1)).toLocaleString("fr-FR")}</text>`);
+    }
   }
   handle();
   // A width clicked: not a drag of its unit, the calculator.
   if (host.edit) {
-    for (const t of node.querySelectorAll<SVGElement>("[data-edit-item], [data-edit-side]")) {
+    for (const t of node.querySelectorAll<SVGElement>("[data-edit-item], [data-edit-side], [data-edit-gap]")) {
       t.addEventListener("pointerdown", (event) => event.stopPropagation());
       t.addEventListener("click", (event) => {
         event.stopPropagation();
         const item = t.dataset.editItem;
         // A unit's, or a caisson furnished by hand's.
         const placed = item ? [...fill.placed, ...fill.spaces].find((pl) => pl.item.id === item) : undefined;
-        if (placed) host.edit!({ kind: "item", id: placed.item.id, width: placed.item.width }, t);
+        if (t.dataset.editGap) host.edit!({ kind: "gap", id: t.dataset.editId!, side: t.dataset.editGap as "left" | "right", width: Number(t.dataset.editWidth), room: Number(t.dataset.editRoom) }, t);
+        else if (placed) host.edit!({ kind: "item", id: placed.item.id, width: placed.item.width }, t);
         else if (t.dataset.editSide) host.edit!({ kind: "corner", side: t.dataset.editSide as "left" | "right", row: t.dataset.editRow as "base" | "wall", width: Number(t.dataset.editWidth) }, t);
       });
     }

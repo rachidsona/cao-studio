@@ -282,7 +282,7 @@ export class RunEditor {
         }
         this.folds.open = "chosen";
         this.host.redraw();
-      }, move: (id, index) => this.move(id, index), slide: (id, by) => this.slide(id, by), resize: (id, width) => this.change(this.items.map((i) => (i.id === id ? { ...i, width } : i))), corner: () => ((this.folds.open = "corners"), this.host.redraw()), appliances, edit: (what, label) => editStripWidth({ plan, run, items: this.items, unit, setItems: (items) => this.change(items), setCorners: (c) => ((this.corners = c), this.touched()) }, what, label), filler: (gap) => { const made = fillerFromGap(this.items, fill, gap); this.focusStrip = true; this.change(made.items, made.id, []); } });
+      }, move: (id, index) => this.move(id, index), slide: (id, by) => this.slide(id, by), resize: (id, width) => this.change(this.items.map((i) => (i.id === id ? { ...i, width } : i))), corner: () => ((this.folds.open = "corners"), this.host.redraw()), appliances, edit: (what, label) => editStripWidth({ plan, run, items: this.items, unit, setItems: (items) => this.change(items), setCorners: (c) => ((this.corners = c), this.touched()), slide: (id, by) => this.slide(id, by) }, what, label), filler: (gap) => { const made = fillerFromGap(this.items, fill, gap); this.focusStrip = true; this.change(made.items, made.id, []); } });
     const clear = el("button", { type: "button", class: WIDE, disabled: !this.items.length }, "Vider le linéaire");
     clear.addEventListener("click", () => this.change([], null));
     const f = this.folds;

@@ -2893,7 +2893,11 @@ opération existante.
     - Une **barre sous la bande** : « ← » et « → » (un cran dans sa rangée), « Dupliquer » (une copie juste après, si
       elle tient), « Supprimer ».
     - Le **clavier**, la bande ayant la main : Suppr supprime, Ctrl + D duplique, ← et → déplacent d'un cran.
-    - Le **clic droit** sur un meuble : Dupliquer, Un cran à gauche ou à droite, Supprimer.
+    - Le **clic droit** sur un meuble : Dupliquer, Copier, Coller après lui, Un cran à gauche ou à droite, Supprimer.
+    - **Copier-coller d'un mur à l'autre** : Ctrl + C sur le meuble choisi, Ctrl + V sur la bande d'un linéaire (le même
+      ou un autre) le colle après le meuble choisi, sinon au bout de sa rangée — s'il y a la place.
+    - **La place libre autour du meuble choisi** est écrite de chaque côté de lui sur la bande : cliquée, elle se tape
+      dans la calculatrice et le meuble glisse d'autant, les autres où ils étaient (`app/kitchen/kitchen-strip-edit.ts`).
     - Un **appareil posé à la main** (Électroménager), cliqué sur la bande, se supprime avec la découpe du plan de
       travail faite pour lui (`document/appliance-remove.ts`).
     - Le **plan de travail**, cliqué, se supprime pour ce linéaire (ni plan ni découpes ; la crédence reste) et se remet

@@ -212,3 +212,40 @@ test("la bande du linéaire et ses murs restent en haut du panneau quand on le f
   await shot(page, "bande-fixe");
   expect(errors).toEqual([]);
 });
+
+test("sur la bande : la place libre de chaque côté du meuble choisi se tape, et un meuble copié se colle sur un autre mur", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await newProject(page, "zz-test-bande-place-copie");
+  await click(page, '[data-ribbon-tab="kitchen"]');
+  await click(page, '[data-workshop="kitchen-plan"]');
+  const tool = page.getByRole("dialog", { name: "Plan de cuisine" });
+  await tool.getByRole("button", { name: "En L à gauche", exact: true }).click();
+  await tool.getByRole("button", { name: "Créer le plan" }).click();
+  await tool.locator('[data-open-run="A"]').click();
+  const add = tool.locator('[data-fold="add"]');
+  if ((await add.getAttribute("aria-expanded")) !== "true") await add.click();
+  await tool.locator('[data-add="base-bas-1-porte-600"]').click();
+  const strip = tool.locator('[data-run-strip="A"]');
+  // The unit added, chosen: the free room after it written beside it; typed 50, it slides there, the rest before it.
+  const right = strip.locator('[data-edit-gap="right"]');
+  await expect(right).toHaveCount(1);
+  const room = Number((await right.textContent())!.match(/[\d,]+$/)![0].replace(",", "."));
+  await right.click();
+  await page.locator("[data-strip-width]").fill("50");
+  await page.locator("[data-strip-width]").press("Enter");
+  await expect(strip.locator('[data-edit-gap="right"]')).toHaveText(/glisse50$/);
+  await expect(strip.locator('[data-edit-gap="left"]')).toHaveText(new RegExp(`glisse${String(room - 50).replace(".", ",")}$`));
+
+  // Copied (Ctrl + C), then pasted on wall B (Ctrl + V): the same unit there.
+  await strip.locator("svg").press("Control+c");
+  await tool.locator('[data-go-run="B"]').click();
+  const other = tool.locator('[data-run-strip="B"]');
+  await expect(other).toBeVisible();
+  const before = await other.locator("[data-item]").count();
+  await other.locator("svg").press("Control+v");
+  await expect(other.locator("[data-item]")).toHaveCount(before + 1);
+  expect(await other.locator("[data-item]").evaluateAll((all) => all.map((g) => g.querySelector("title")?.textContent ?? ""))).toContain("Bas 1 porte 60");
+  expect(errors).toEqual([]);
+});
