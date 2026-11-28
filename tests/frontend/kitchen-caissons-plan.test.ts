@@ -4,7 +4,7 @@ import { withCaissonsPlaced } from "../../frontend/src/document/cabinet-furnish"
 import { kitchenPlanIn, withKitchenBuilt, withKitchenPlan } from "../../frontend/src/document/kitchen-floor";
 import { KITCHEN_PLAN } from "../../frontend/src/document/kitchen-plan-shapes";
 import { syncKitchenPlans } from "../../frontend/src/document/kitchen-sync";
-import { createReferencePlate, type CadDocument, type NicheFeature, type SketchFeature } from "../../frontend/src/document/types";
+import { createReferencePlate, type CadDocument, type NicheFeature, type SketchFeature, type Vec3 } from "../../frontend/src/document/types";
 import { isSpace, newItem } from "../../frontend/src/features/kitchen-run-items";
 import { nichePartsIn } from "../../frontend/src/features/niche-parts";
 
@@ -38,7 +38,7 @@ describe("caissons en Répartition d'un plan de cuisine", () => {
     const second = kitchenPlanIn(doc, plan)!.runs!.A!.find((i) => i.id === "u2")!.furnished!;
     const sk = doc.features.find((f): f is SketchFeature => f.id === second)!;
     const x = sk.frame!.xDir;
-    const pushed = { ...doc, features: doc.features.map((f) => (f.id === second ? { ...sk, frame: { ...sk.frame!, origin: sk.frame!.origin.map((v, k) => v + 300 * x[k]!) as typeof sk.frame.origin } } : f)) };
+    const pushed = { ...doc, features: doc.features.map((f) => (f.id === second ? { ...sk, frame: { ...sk.frame!, origin: sk.frame!.origin.map((v, k) => v + 300 * x[k]!) as Vec3 } } : f)) };
     const synced = syncKitchenPlans(doc, pushed);
     const items = kitchenPlanIn(synced, plan)!.runs!.A!;
     const k = items.findIndex((i) => i.id === "u2");
