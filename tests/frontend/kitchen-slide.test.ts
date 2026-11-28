@@ -72,6 +72,15 @@ describe("glisser un meuble dans la place vide", () => {
     expect(made.items.filter((i) => i.model === "filler").map((i) => i.width)).toEqual([100]);
     expect(at(next, made.items)).toEqual({ ...at(p, items), [high.id]: at(p, items)[high.id]! - 600 });
   });
+
+  it("le reste d'en bas tenait par un fileur au bout du linéaire : un meuble glissé ne le fige pas, le plan le refait", () => {
+    const items = units([["base-bas-2-portes", 1200], ["base-bas-2-portes", 1200], ["base-bas-2-portes", 1100], ["wall-haut-1-porte", 600]]);
+    const p = plan("end", items);
+    expect(fillOf(p, items).fillers.map(([a, b]) => [Math.round(a), Math.round(b)])).toEqual([[3500, 3600]]);
+    const made = itemSlid(p, run(p), undefined, items, heights(p), items[3]!.id, 600);
+    if (typeof made === "string") throw new Error(made);
+    expect(made.items.filter((i) => i.model === "filler")).toEqual([]);
+  });
 });
 
 describe("supprimer un meuble sur la bande", () => {

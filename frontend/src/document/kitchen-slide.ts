@@ -2,7 +2,7 @@
  * Un meuble glissé à la souris sur la bande de son linéaire, dans la place vide à côté de lui (le reste de sa rangée,
  * hachuré) : il s'y pose à l'endroit lâché et les autres meubles ne bougent pas. Le plan le dit comme pour un meuble
  * poussé dans la 3D (kitchen-moves.ts) : le reste du linéaire va « à droite », et des « Espaces libres » gardent chaque
- * meuble à sa place ; les fileurs que le plan mettait dans le reste deviennent des fileurs posés, à leur place
+ * meuble à sa place ; les fileurs que le plan mettait dans le reste avant un meuble deviennent des fileurs posés, à leur place (celui du bout, le plan le refait)
  * (features/kitchen-run-gaps.ts). Il s'arrête contre son voisin ou au bout de sa place libre, et s'y colle à
  * l'approche. Refusé, avec la raison, quand le linéaire ne peut pas le dire. Pur.
  */
@@ -51,9 +51,12 @@ export function itemSlid(plan: KitchenFloorPlan, run: KitchenRun, info: RunInfo 
   if (d - lo < SNAP) d = lo;
   else if (hi - d < SNAP) d = hi;
   if (Math.abs(d) < 1) return { items, rest: g.rest, by: 0 };
-  // The fillers of the rest, pinned where they are; then everything from the left, held in place by room kept free.
-  const pinned = gapsAsItems(items, fill);
-  const target = new Map<string, number>([...fill.placed.map((p): [string, number] => [p.item.id, p.at + (p.item.id === id ? d : 0)]), ...pinned.ids.map((fid, k): [string, number] => [fid, fill.fillers[k]![0]])]);
+  // The fillers of the rest with a unit after them, pinned where they are (the one at the end of the run, the plan
+  // makes again there); then everything from the left, held in place by room kept free.
+  const later = [...fill.placed, ...fill.spaces].filter((pl) => pl.row === "base");
+  const kept = { ...fill, fillers: fill.fillers.filter(([, b]) => later.some((pl) => pl.at >= b - 1)) };
+  const pinned = gapsAsItems(items, kept);
+  const target = new Map<string, number>([...fill.placed.map((p): [string, number] => [p.item.id, p.at + (p.item.id === id ? d : 0)]), ...pinned.ids.map((fid, k): [string, number] => [fid, kept.fillers[k]![0]])]);
   const end = runGeometry({ ...plan, rest: { ...plan.rest, [run.id]: "end" } }, run, info);
   const packed = fillRun(end, pinned.items, heights);
   const shifts = Object.fromEntries(packed.placed.filter((p) => target.has(p.item.id)).map((p) => [p.item.id, Math.round((target.get(p.item.id)! - p.at) * 10) / 10]));
